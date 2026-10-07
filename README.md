@@ -18,6 +18,8 @@ docker compose up -d --build
 | Backend API | http://localhost:4000/api/v1 |
 | PostgreSQL | `localhost:5433` (planner / planner) |
 
+Xaricdən yalnız frontend portu açıqdır, API də onun üzərindən `/api/v1` yolu ilə işləyir (mobil tətbiq üçün də). Backend və baza portları yalnız serverin özündən (127.0.0.1) əlçatandır.
+
 Portlar başqa proqramla toqquşarsa, `.env`-də `FRONTEND_PORT`, `BACKEND_PORT`, `DB_PORT` dəyərlərini dəyişin.
 
 Cədvəllər backend start olanda avtomatik yaradılır, məlumatlar `planner-data` volume-unda saxlanılır. Kod dəyişəndən sonra `docker compose up -d --build` ilə yenidən qurun. Loglar üçün: `docker compose logs -f backend`.
