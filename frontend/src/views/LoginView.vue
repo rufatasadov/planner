@@ -3,6 +3,8 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { errMsg } from '../api';
+import { t } from '../i18n';
+import PrefsSwitch from '../components/PrefsSwitch.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -29,17 +31,18 @@ async function submit() {
 <template>
   <div class="auth-page">
     <div class="auth-glow"></div>
+    <div class="auth-prefs"><PrefsSwitch /></div>
     <form class="auth-card card" @submit.prevent="submit">
       <div class="brand big"><span class="brand-dot"></span>Planner</div>
-      <p class="muted">Günün hər saatını planla, proyektlərini idarə et.</p>
+      <p class="muted">{{ t('auth.tagline') }}</p>
       <div class="tabs">
-        <button type="button" :class="{ active: mode === 'login' }" @click="mode = 'login'">Daxil ol</button>
-        <button type="button" :class="{ active: mode === 'register' }" @click="mode = 'register'">Qeydiyyat</button>
+        <button type="button" :class="{ active: mode === 'login' }" @click="mode = 'login'">{{ t('auth.login') }}</button>
+        <button type="button" :class="{ active: mode === 'register' }" @click="mode = 'register'">{{ t('auth.register') }}</button>
       </div>
-      <label v-if="mode === 'register'">Ad <input v-model="form.name" required autocomplete="name" /></label>
-      <label>Email <input v-model="form.email" type="email" required autocomplete="email" /></label>
+      <label v-if="mode === 'register'">{{ t('auth.name') }} <input v-model="form.name" required autocomplete="name" /></label>
+      <label>{{ t('auth.email') }} <input v-model="form.email" type="email" required autocomplete="email" /></label>
       <label>
-        Şifrə
+        {{ t('auth.password') }}
         <input
           v-model="form.password"
           type="password"
@@ -50,7 +53,7 @@ async function submit() {
       </label>
       <p v-if="error" class="error-text">{{ error }}</p>
       <button class="btn primary block" :disabled="busy">
-        {{ mode === 'login' ? 'Daxil ol' : 'Hesab yarat' }}
+        {{ mode === 'login' ? t('auth.login') : t('auth.createAccount') }}
       </button>
     </form>
   </div>

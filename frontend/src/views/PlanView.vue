@@ -5,8 +5,9 @@ import api, { errMsg, notifyPlansChanged } from '../api';
 import { useSettingsStore } from '../stores/settings';
 import { useToast } from '../stores/toast';
 import { useNow } from '../composables/useNow';
+import { t } from '../i18n';
 import {
-  addDays, fmtDateLong, fmtDuration, fmtMin, parseDate, toDateStr, weekDates, weekdayIndex, WEEKDAYS,
+  addDays, fmtDateLong, fmtDuration, fmtMin, parseDate, toDateStr, weekDates, weekdayShort,
 } from '../utils/time';
 import DayTimeline from '../components/DayTimeline.vue';
 import DonutChart from '../components/DonutChart.vue';
@@ -57,10 +58,10 @@ const workDay = computed(() => settings.work_end_min - settings.work_start_min);
 const plannedMin = computed(() => plans.value.reduce((s, p) => s + p.end_min - p.start_min, 0));
 const dayTasks = computed(() => {
   const map = new Map();
-  plans.value.forEach((p) => p.tasks.forEach((t) => map.set(t.id, t)));
+  plans.value.forEach((p) => p.tasks.forEach((task) => map.set(task.id, task)));
   return [...map.values()];
 });
-const doneTasks = computed(() => dayTasks.value.filter((t) => t.status === 'done').length);
+const doneTasks = computed(() => dayTasks.value.filter((task) => task.status === 'done').length);
 const dayProgress = computed(() => {
   if (date.value < todayStr.value) return 100;
   if (date.value > todayStr.value) return 0;
@@ -77,7 +78,7 @@ const segments = computed(() => {
   }
   const list = [...map.values()].sort((a, b) => b.value - a.value);
   const free = workDay.value - plannedMin.value;
-  if (free > 0) list.push({ label: 'Boş vaxt', color: '#334155', value: free });
+  if (free > 0) list.push({ label: t('plan.freeTime'), color: 'var(--free)', value: free });
   return list;
 });
 
@@ -89,7 +90,7 @@ const countdown = computed(() => {
       total: (p.end_min - p.start_min) * 60,
       remaining,
       color: p.project_color,
-      caption: 'qaldı',
+      caption: t('plan.left'),
       warning: remaining <= settings.notify_before_min * 60,
     };
   }
@@ -99,8 +100,8 @@ const countdown = computed(() => {
     return {
       total: Math.max(1, (p.start_min - Math.min(prevEnd, nowMin.value)) * 60),
       remaining: p.start_min * 60 - nowSec.value,
-      color: '#64748b',
-      caption: 'başlamağa',
+      color: 'var(--muted)',
+      caption: t('plan.untilStart'),
       warning: false,
     };
   }
@@ -125,7 +126,7 @@ async function load() {
     weekPlans.value = plansRes.data;
     projects.value = projectsRes.data;
   } catch (e) {
-    toast.error('Yüklənmədi', errMsg(e));
+    toast.error(t('common.loadFailed'), errMsg(e));
   } finally {
     loading.value = false;
   }
@@ -147,12 +148,12 @@ function freeSlotFrom(start) {
 
 function openCreate(start) {
   if (!projects.value.length) {
-    toast.push({ type: 'info', title: 'Əvvəlcə proyekt yaradın' });
+    toast.push({ type: 'info', title: t('plan.createProjectFirst') });
     return router.push('/projects');
   }
   const base = start ?? (isToday.value ? Math.ceil(nowMin.value / 15) * 15 : settings.work_start_min);
   const slot = freeSlotFrom(base);
-  if (slot.start_min >= settings.work_end_min) return toast.error('Boş vaxt yoxdur', 'Günün iş saatları doludur');
+  if (slot.start_min >= settings.work_end_min) return toast.error(t('plan.noFreeTime'), t('plan.dayFull'));
   editing.value = null;
   formDefaults.value = slot;
   formOpen.value = true;
@@ -170,10 +171,10 @@ async function savePlan(form) {
       const { data } = await api.post('/plans', { ...form, date: date.value });
       formOpen.value = false;
       selectedId.value = data.id;
-      toast.success('Plan əlavə olundu', `${data.tasks.length} task əlavə edildi`);
+      toast.success(t('plan.created'), t('plan.tasksAdded', { n: data.tasks.length }));
       await afterChange();
     } catch (e) {
-      toast.error('Plan yaradılmadı', errMsg(e));
+      toast.error(t('plan.createFailed'), errMsg(e));
     } finally {
       saving.value = false;
     }
@@ -197,24 +198,25 @@ async function updatePlan(id, form, shiftMode) {
     formOpen.value = false;
     shiftState.value = null;
     const n = data.shifted_plan_ids.length;
-    toast.success('Plan yeniləndi', n ? `${n} sonrakı plan da sürüşdürüldü` : '');
+    toast.success(t('plan.updated'), n ? t('plan.shiftedCount', { n }) : '');
     await afterChange();
   } catch (e) {
-    toast.error('Yenilənmədi', errMsg(e));
+    toast.error(t('plan.updateFailed'), errMsg(e));
   } finally {
     saving.value = false;
   }
 }
 
 async function deletePlan(plan) {
-  if (!confirm(`"${plan.project_name}" planı (${fmtMin(plan.start_min)}-${fmtMin(plan.end_min)}) silinsin?`)) return;
+  const range = `${fmtMin(plan.start_min)}-${fmtMin(plan.end_min)}`;
+  if (!confirm(t('plan.confirmDelete', { name: plan.project_name, range }))) return;
   try {
     await api.delete(`/plans/${plan.id}`);
-    toast.success('Plan silindi');
+    toast.success(t('plan.deleted'));
     selectedId.value = null;
     await afterChange();
   } catch (e) {
-    toast.error('Silinmədi', errMsg(e));
+    toast.error(t('common.deleteFailed'), errMsg(e));
   }
 }
 
@@ -222,12 +224,12 @@ async function postpone(payload) {
   saving.value = true;
   try {
     await api.post(`/plans/${postponing.value.id}/postpone`, payload);
-    toast.success('Plan təxirə salındı', `${fmtDateLong(payload.date)}, ${fmtMin(payload.start_min)}`);
+    toast.success(t('plan.postponed'), `${fmtDateLong(payload.date)}, ${fmtMin(payload.start_min)}`);
     postponing.value = null;
     selectedId.value = null;
     await afterChange();
   } catch (e) {
-    toast.error('Təxirə salınmadı', errMsg(e));
+    toast.error(t('plan.postponeFailed'), errMsg(e));
   } finally {
     saving.value = false;
   }
@@ -237,10 +239,10 @@ async function syncTasks(plan) {
   try {
     const { data } = await api.post(`/plans/${plan.id}/sync-tasks`);
     const added = data.tasks.length - plan.tasks.length;
-    toast.success(added ? `${added} yeni task əlavə olundu` : 'Yeni açıq task yoxdur');
+    toast.success(added ? t('plan.newTasksAdded', { n: added }) : t('plan.noNewTasks'));
     await load();
   } catch (e) {
-    toast.error('Xəta', errMsg(e));
+    toast.error(t('common.error'), errMsg(e));
   }
 }
 
@@ -250,11 +252,11 @@ async function generate(payload) {
     const { data } = await api.post('/plans/generate', { source_date: date.value, ...payload });
     const created = data.days.reduce((s, d) => s + d.created, 0);
     const skipped = data.days.reduce((s, d) => s + d.skipped, 0);
-    toast.success(`${created} plan yaradıldı`, skipped ? `${skipped} plan kəsişmə səbəbindən ötürüldü` : '');
+    toast.success(t('generate.created', { n: created }), skipped ? t('generate.skipped', { n: skipped }) : '');
     generateOpen.value = false;
     await afterChange();
   } catch (e) {
-    toast.error('Generasiya alınmadı', errMsg(e));
+    toast.error(t('generate.failed'), errMsg(e));
   } finally {
     saving.value = false;
   }
@@ -262,14 +264,14 @@ async function generate(payload) {
 
 async function setTaskStatus(task, status) {
   const prev = task.status;
-  const apply = (s) => weekPlans.value.forEach((p) => p.tasks.forEach((t) => t.id === task.id && (t.status = s)));
+  const apply = (s) => weekPlans.value.forEach((p) => p.tasks.forEach((x) => x.id === task.id && (x.status = s)));
   apply(status);
   try {
     await api.patch(`/tasks/${task.id}/status`, { status });
-    if (status === 'done') toast.success('Task bitdi 🎉', task.title);
+    if (status === 'done') toast.success(t('tasks.completed'), task.title);
   } catch (e) {
     apply(prev);
-    toast.error('Status dəyişmədi', errMsg(e));
+    toast.error(t('tasks.statusFailed'), errMsg(e));
   }
 }
 
@@ -278,7 +280,7 @@ async function afterChange() {
   await load();
 }
 
-const planDone = (p) => p.tasks.filter((t) => t.status === 'done').length;
+const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
 </script>
 
 <template>
@@ -286,19 +288,19 @@ const planDone = (p) => p.tasks.filter((t) => t.status === 'done').length;
     <section class="page-head">
       <div>
         <h1>{{ fmtDateLong(date) }}</h1>
-        <div class="day-progress" :title="`Günün ${Math.round(dayProgress)}%-i keçib`">
+        <div class="day-progress" :title="t('plan.dayPassed', { p: Math.round(dayProgress) })">
           <div :style="{ width: dayProgress + '%' }"></div>
         </div>
       </div>
       <div class="head-actions">
         <div class="btn-group">
           <button class="btn ghost" @click="date = addDays(date, -1)">‹</button>
-          <button class="btn ghost" :class="{ active: isToday }" @click="date = todayStr">Bu gün</button>
+          <button class="btn ghost" :class="{ active: isToday }" @click="date = todayStr">{{ t('plan.today') }}</button>
           <button class="btn ghost" @click="date = addDays(date, 1)">›</button>
         </div>
         <input v-model="date" type="date" class="date-input" />
-        <button class="btn ghost" :disabled="!plans.length" @click="generateOpen = true">⟳ Həftəyə köçür</button>
-        <button class="btn primary" @click="openCreate()">+ Yeni plan</button>
+        <button class="btn ghost" :disabled="!plans.length" @click="generateOpen = true">⟳ {{ t('plan.copyToWeek') }}</button>
+        <button class="btn primary" @click="openCreate()">+ {{ t('plan.new') }}</button>
       </div>
     </section>
 
@@ -311,7 +313,7 @@ const planDone = (p) => p.tasks.filter((t) => t.status === 'done').length;
         @click="date = d.date"
       >
         <div class="wd-top">
-          <span>{{ WEEKDAYS[weekdayIndex(d.date)] }}</span>
+          <span>{{ weekdayShort(d.date) }}</span>
           <b>{{ parseDate(d.date).getDate() }}</b>
         </div>
         <div class="wd-bar">
@@ -322,15 +324,15 @@ const planDone = (p) => p.tasks.filter((t) => t.status === 'done').length;
           ></span>
           <span class="wd-free" :style="{ flex: Math.max(0, workDay - d.minutes) }"></span>
         </div>
-        <small class="muted">{{ d.minutes ? fmtDuration(d.minutes) : 'boş' }}</small>
+        <small class="muted">{{ d.minutes ? fmtDuration(d.minutes) : t('plan.empty') }}</small>
       </button>
     </section>
 
     <div class="plan-grid">
       <section class="card timeline-card">
         <div class="card-head">
-          <h3>Gün qrafiki</h3>
-          <span class="muted small">Boş yerə klikləyərək plan əlavə edin</span>
+          <h3>{{ t('plan.schedule') }}</h3>
+          <span class="muted small">{{ t('plan.clickToAdd') }}</span>
         </div>
         <DayTimeline
           :plans="plans"
@@ -355,7 +357,7 @@ const planDone = (p) => p.tasks.filter((t) => t.status === 'done').length;
               :caption="countdown.caption"
             />
             <div class="now-info">
-              <div class="muted small">{{ currentPlan ? 'İndi' : 'Növbəti' }}</div>
+              <div class="muted small">{{ currentPlan ? t('plan.now') : t('plan.next') }}</div>
               <h2>
                 <span class="dot lg" :style="{ background: (currentPlan ?? nextPlan).project_color }"></span>
                 {{ (currentPlan ?? nextPlan).project_name }}
@@ -364,31 +366,31 @@ const planDone = (p) => p.tasks.filter((t) => t.status === 'done').length;
                 {{ fmtMin((currentPlan ?? nextPlan).start_min) }} – {{ fmtMin((currentPlan ?? nextPlan).end_min) }}
               </div>
               <div v-if="currentPlan && nextPlan" class="next-up">
-                Sonra: <span class="dot" :style="{ background: nextPlan.project_color }"></span>
+                {{ t('plan.then') }}: <span class="dot" :style="{ background: nextPlan.project_color }"></span>
                 {{ nextPlan.project_name }} · {{ fmtMin(nextPlan.start_min) }}
               </div>
-              <div v-if="countdown.warning" class="warn-text">⏰ Vaxtın bitməsinə az qalıb!</div>
+              <div v-if="countdown.warning" class="warn-text">⏰ {{ t('plan.almostOver') }}</div>
             </div>
           </template>
           <div v-else class="empty-now">
             <div class="big-emoji">☕</div>
-            <div>Hazırda aktiv plan yoxdur</div>
+            <div>{{ t('plan.noActive') }}</div>
           </div>
         </section>
 
         <section class="stats">
           <div class="stat card">
-            <span class="muted small">Planlanıb</span>
+            <span class="muted small">{{ t('plan.planned') }}</span>
             <b>{{ fmtDuration(plannedMin) }}</b>
             <div class="mini-bar"><div :style="{ width: (plannedMin / workDay) * 100 + '%' }"></div></div>
           </div>
           <div class="stat card">
-            <span class="muted small">Boş vaxt</span>
+            <span class="muted small">{{ t('plan.freeTime') }}</span>
             <b>{{ fmtDuration(Math.max(0, workDay - plannedMin)) }}</b>
             <div class="mini-bar free"><div :style="{ width: ((workDay - plannedMin) / workDay) * 100 + '%' }"></div></div>
           </div>
           <div class="stat card">
-            <span class="muted small">Tasklar</span>
+            <span class="muted small">{{ t('plan.tasks') }}</span>
             <b>{{ doneTasks }}/{{ dayTasks.length }}</b>
             <div class="mini-bar ok">
               <div :style="{ width: (dayTasks.length ? (doneTasks / dayTasks.length) * 100 : 0) + '%' }"></div>
@@ -397,11 +399,11 @@ const planDone = (p) => p.tasks.filter((t) => t.status === 'done').length;
         </section>
 
         <section class="card">
-          <div class="card-head"><h3>Vaxt bölgüsü</h3></div>
+          <div class="card-head"><h3>{{ t('plan.distribution') }}</h3></div>
           <DonutChart
             :segments="segments"
             :center-title="fmtDuration(plannedMin)"
-            :center-sub="`${Math.round((plannedMin / workDay) * 100)}% dolu`"
+            :center-sub="t('plan.filled', { p: Math.round((plannedMin / workDay) * 100) })"
           />
         </section>
 
@@ -416,10 +418,10 @@ const planDone = (p) => p.tasks.filter((t) => t.status === 'done').length;
                 </div>
               </div>
               <div class="actions">
-                <button class="icon-btn" title="Redaktə" @click="openEdit(selected)">✎</button>
-                <button class="icon-btn" title="Təxirə sal" @click="postponing = selected">⏭</button>
-                <button class="icon-btn" title="Yeni taskları əlavə et" @click="syncTasks(selected)">⟳</button>
-                <button class="icon-btn danger" title="Sil" @click="deletePlan(selected)">🗑</button>
+                <button class="icon-btn" :title="t('common.edit')" @click="openEdit(selected)">✎</button>
+                <button class="icon-btn" :title="t('postpone.title')" @click="postponing = selected">⏭</button>
+                <button class="icon-btn" :title="t('plan.syncTasks')" @click="syncTasks(selected)">⟳</button>
+                <button class="icon-btn danger" :title="t('common.delete')" @click="deletePlan(selected)">🗑</button>
               </div>
             </div>
             <p v-if="selected.note" class="note">{{ selected.note }}</p>
@@ -428,17 +430,17 @@ const planDone = (p) => p.tasks.filter((t) => t.status === 'done').length;
             </div>
             <ul class="task-list">
               <TransitionGroup name="list">
-                <li v-for="t in selected.tasks" :key="t.id" :class="{ done: t.status === 'done' }">
+                <li v-for="task in selected.tasks" :key="task.id" :class="{ done: task.status === 'done' }">
                   <input
                     type="checkbox"
-                    :checked="t.status === 'done'"
-                    @change="setTaskStatus(t, $event.target.checked ? 'done' : 'todo')"
+                    :checked="task.status === 'done'"
+                    @change="setTaskStatus(task, $event.target.checked ? 'done' : 'todo')"
                   />
-                  <span class="task-title">{{ t.title }}</span>
-                  <TaskStatusSelect :model-value="t.status" @update:model-value="setTaskStatus(t, $event)" />
+                  <span class="task-title">{{ task.title }}</span>
+                  <TaskStatusSelect :model-value="task.status" @update:model-value="setTaskStatus(task, $event)" />
                 </li>
               </TransitionGroup>
-              <li v-if="!selected.tasks.length" class="muted">Bu planda task yoxdur.</li>
+              <li v-if="!selected.tasks.length" class="muted">{{ t('plan.noTasks') }}</li>
             </ul>
           </section>
         </Transition>

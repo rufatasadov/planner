@@ -1,6 +1,7 @@
 import api from '../api';
 import { useToast } from '../stores/toast';
 import { fmtMin, toDateStr } from '../utils/time';
+import { t } from '../i18n';
 
 export function beep() {
   try {
@@ -59,10 +60,13 @@ export function useNotifier() {
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, '1');
 
-    const next = data.next ? ` Növbəti: ${data.next.project_name} (${fmtMin(data.next.start_min)})` : '';
+    const range = `${fmtMin(plan.start_min)}-${fmtMin(plan.end_min)}`;
+    const next = data.next
+      ? ' ' + t('notify.next', { name: data.next.project_name, time: fmtMin(data.next.start_min) })
+      : '';
     showNotification(
-      `${plan.project_name}: ${Math.ceil(remaining / 60)} dəq qaldı`,
-      `Plan ${fmtMin(plan.start_min)}-${fmtMin(plan.end_min)} bitmək üzrədir.${next}`,
+      t('notify.title', { name: plan.project_name, m: Math.ceil(remaining / 60) }),
+      t('notify.body', { range }) + next,
     );
   }
 

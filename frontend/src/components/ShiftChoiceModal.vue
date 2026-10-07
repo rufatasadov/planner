@@ -1,6 +1,7 @@
 <script setup>
 import AppModal from './AppModal.vue';
 import { fmtMin } from '../utils/time';
+import { t } from '../i18n';
 
 defineProps({
   show: Boolean,
@@ -11,11 +12,8 @@ const emit = defineEmits(['close', 'choose']);
 </script>
 
 <template>
-  <AppModal :show="show" title="Sonrakı planlar nə olsun?" width="520px" @close="emit('close')">
-    <p>
-      Planın bitmə vaxtı <b>{{ delta > 0 ? '+' : '' }}{{ delta }} dəq</b> dəyişir. Ondan sonra
-      <b>{{ following.length }}</b> plan var:
-    </p>
+  <AppModal :show="show" :title="t('shift.title')" width="520px" @close="emit('close')">
+    <p>{{ t('shift.intro', { delta: (delta > 0 ? '+' : '') + delta, n: following.length }) }}</p>
     <ul class="mini-list">
       <li v-for="p in following" :key="p.id">
         <span class="dot" :style="{ background: p.project_color }"></span>
@@ -24,16 +22,16 @@ const emit = defineEmits(['close', 'choose']);
     </ul>
     <div class="choice-list">
       <button class="choice" @click="emit('choose', 'all')">
-        <b>Bütün sonrakı planları sürüşdür</b>
-        <span>Hamısı {{ Math.abs(delta) }} dəq {{ delta > 0 ? 'irəli' : 'geri' }} çəkilir, müddətləri dəyişmir.</span>
+        <b>{{ t('shift.allTitle') }}</b>
+        <span>{{ t(delta > 0 ? 'shift.allDescForward' : 'shift.allDescBack', { m: Math.abs(delta) }) }}</span>
       </button>
       <button class="choice" @click="emit('choose', 'next')">
-        <b>Yalnız növbəti planı dəyiş</b>
-        <span>Növbəti planın başlanğıcı bu planın yeni bitmə vaxtına uyğunlaşır, qalanlar yerində qalır.</span>
+        <b>{{ t('shift.nextTitle') }}</b>
+        <span>{{ t('shift.nextDesc') }}</span>
       </button>
       <button class="choice" @click="emit('choose', 'none')">
-        <b>Heç birini dəyişmə</b>
-        <span>Yalnız bu plan dəyişir (kəsişmə olarsa xəta veriləcək).</span>
+        <b>{{ t('shift.noneTitle') }}</b>
+        <span>{{ t('shift.noneDesc') }}</span>
       </button>
     </div>
   </AppModal>

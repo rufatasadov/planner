@@ -3,6 +3,7 @@ import { ref, reactive, onMounted } from 'vue';
 import api, { errMsg } from '../api';
 import { useToast } from '../stores/toast';
 import { PROJECT_COLORS } from '../utils/status';
+import { t } from '../i18n';
 import AppModal from '../components/AppModal.vue';
 
 const toast = useToast();
@@ -16,7 +17,7 @@ async function load() {
   try {
     projects.value = (await api.get('/projects')).data;
   } catch (e) {
-    toast.error('Yüklənmədi', errMsg(e));
+    toast.error(t('common.loadFailed'), errMsg(e));
   } finally {
     loading.value = false;
   }
@@ -37,22 +38,22 @@ async function save() {
   try {
     if (editing.value) await api.put(`/projects/${editing.value.id}`, form);
     else await api.post('/projects', form);
-    toast.success(editing.value ? 'Proyekt yeniləndi' : 'Proyekt yaradıldı');
+    toast.success(editing.value ? t('projects.updated') : t('projects.created'));
     modalOpen.value = false;
     await load();
   } catch (e) {
-    toast.error('Yadda saxlanmadı', errMsg(e));
+    toast.error(t('common.saveFailed'), errMsg(e));
   }
 }
 
 async function remove(p) {
-  if (!confirm(`"${p.name}" proyekti, onun taskları və planları silinsin?`)) return;
+  if (!confirm(t('projects.confirmDelete', { name: p.name }))) return;
   try {
     await api.delete(`/projects/${p.id}`);
-    toast.success('Proyekt silindi');
+    toast.success(t('projects.deleted'));
     await load();
   } catch (e) {
-    toast.error('Silinmədi', errMsg(e));
+    toast.error(t('common.deleteFailed'), errMsg(e));
   }
 }
 
@@ -62,14 +63,14 @@ const pct = (p) => (p.task_count ? Math.round((p.done_task_count / p.task_count)
 <template>
   <div>
     <section class="page-head">
-      <h1>Proyektlər</h1>
-      <button class="btn primary" @click="openForm()">+ Yeni proyekt</button>
+      <h1>{{ t('projects.title') }}</h1>
+      <button class="btn primary" @click="openForm()">+ {{ t('projects.new') }}</button>
     </section>
 
     <div v-if="!loading && !projects.length" class="empty card">
       <div class="big-emoji">📁</div>
-      <p>Hələ proyekt yoxdur. İlk proyektinizi yaradın.</p>
-      <button class="btn primary" @click="openForm()">Proyekt yarat</button>
+      <p>{{ t('projects.empty') }}</p>
+      <button class="btn primary" @click="openForm()">{{ t('projects.create') }}</button>
     </div>
 
     <TransitionGroup name="list" tag="div" class="project-grid">
@@ -83,27 +84,27 @@ const pct = (p) => (p.task_count ? Math.round((p.done_task_count / p.task_count)
         <div class="pc-head">
           <h3>{{ p.name }}</h3>
           <div class="actions" @click.prevent>
-            <button class="icon-btn" title="Redaktə" @click="openForm(p)">✎</button>
-            <button class="icon-btn danger" title="Sil" @click="remove(p)">🗑</button>
+            <button class="icon-btn" :title="t('common.edit')" @click="openForm(p)">✎</button>
+            <button class="icon-btn danger" :title="t('common.delete')" @click="remove(p)">🗑</button>
           </div>
         </div>
-        <p class="muted desc">{{ p.description || 'Təsvir yoxdur' }}</p>
+        <p class="muted desc">{{ p.description || t('projects.noDescription') }}</p>
         <div class="pc-stats">
-          <span><b>{{ p.open_task_count }}</b> açıq</span>
-          <span><b>{{ p.done_task_count }}</b> bitib</span>
-          <span><b>{{ p.task_count }}</b> cəmi</span>
+          <span><b>{{ p.open_task_count }}</b> {{ t('projects.open') }}</span>
+          <span><b>{{ p.done_task_count }}</b> {{ t('projects.done') }}</span>
+          <span><b>{{ p.task_count }}</b> {{ t('projects.total') }}</span>
         </div>
         <div class="progress-line"><div :style="{ width: pct(p) + '%' }"></div></div>
-        <small class="muted">{{ pct(p) }}% tamamlanıb</small>
+        <small class="muted">{{ t('projects.completed', { p: pct(p) }) }}</small>
       </RouterLink>
     </TransitionGroup>
 
-    <AppModal :show="modalOpen" :title="editing ? 'Proyekti redaktə et' : 'Yeni proyekt'" @close="modalOpen = false">
+    <AppModal :show="modalOpen" :title="editing ? t('projects.editTitle') : t('projects.newTitle')" @close="modalOpen = false">
       <form class="form" @submit.prevent="save">
-        <label>Ad <input v-model="form.name" required maxlength="255" /></label>
-        <label>Təsvir <textarea v-model="form.description" rows="3"></textarea></label>
+        <label>{{ t('projects.name') }} <input v-model="form.name" required maxlength="255" /></label>
+        <label>{{ t('projects.description') }} <textarea v-model="form.description" rows="3"></textarea></label>
         <label>
-          Rəng
+          {{ t('projects.color') }}
           <div class="color-pick">
             <button
               v-for="c in PROJECT_COLORS"
@@ -118,8 +119,8 @@ const pct = (p) => (p.task_count ? Math.round((p.done_task_count / p.task_count)
         </label>
       </form>
       <template #footer>
-        <button class="btn ghost" @click="modalOpen = false">Ləğv et</button>
-        <button class="btn primary" :disabled="!form.name.trim()" @click="save">Yadda saxla</button>
+        <button class="btn ghost" @click="modalOpen = false">{{ t('common.cancel') }}</button>
+        <button class="btn primary" :disabled="!form.name.trim()" @click="save">{{ t('common.save') }}</button>
       </template>
     </AppModal>
   </div>

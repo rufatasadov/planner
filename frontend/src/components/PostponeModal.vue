@@ -3,6 +3,7 @@ import { reactive, watch } from 'vue';
 import AppModal from './AppModal.vue';
 import TimeSelect from './TimeSelect.vue';
 import { addDays, fmtMin } from '../utils/time';
+import { t } from '../i18n';
 
 const props = defineProps({
   show: Boolean,
@@ -32,35 +33,37 @@ function quick(days) {
 </script>
 
 <template>
-  <AppModal :show="show" title="Planı təxirə sal" @close="emit('close')">
+  <AppModal :show="show" :title="t('postpone.title')" @close="emit('close')">
     <div v-if="plan" class="form">
       <p>
         <span class="dot" :style="{ background: plan.project_color }"></span>
         <b>{{ plan.project_name }}</b> ({{ fmtMin(plan.start_min) }}-{{ fmtMin(plan.end_min) }})
       </p>
       <div class="chips">
-        <button type="button" class="chip" @click="quick(0)">Bu gün</button>
-        <button type="button" class="chip" @click="quick(1)">Sabah</button>
-        <button type="button" class="chip" @click="quick(2)">2 gün sonra</button>
-        <button type="button" class="chip" @click="quick(7)">1 həftə sonra</button>
+        <button type="button" class="chip" @click="quick(0)">{{ t('postpone.today') }}</button>
+        <button type="button" class="chip" @click="quick(1)">{{ t('postpone.tomorrow') }}</button>
+        <button type="button" class="chip" @click="quick(2)">{{ t('postpone.in2days') }}</button>
+        <button type="button" class="chip" @click="quick(7)">{{ t('postpone.in1week') }}</button>
       </div>
       <div class="row">
-        <label>Tarix <input v-model="form.date" type="date" /></label>
+        <label>{{ t('postpone.date') }} <input v-model="form.date" type="date" /></label>
         <label>
-          Başlama
+          {{ t('planForm.start') }}
           <TimeSelect v-model="form.start_min" :min="workStart" :max="workEnd - duration()" />
         </label>
       </div>
-      <p class="hint">Yeni vaxt: {{ fmtMin(form.start_min) }} – {{ fmtMin(form.start_min + duration()) }}</p>
+      <p class="hint">
+        {{ t('postpone.newTime', { range: `${fmtMin(form.start_min)} – ${fmtMin(form.start_min + duration())}` }) }}
+      </p>
     </div>
     <template #footer>
-      <button class="btn ghost" @click="emit('close')">Ləğv et</button>
+      <button class="btn ghost" @click="emit('close')">{{ t('common.cancel') }}</button>
       <button
         class="btn primary"
         :disabled="saving || !form.date"
         @click="emit('save', { date: form.date, start_min: form.start_min, end_min: form.start_min + duration() })"
       >
-        Təxirə sal
+        {{ t('postpone.submit') }}
       </button>
     </template>
   </AppModal>

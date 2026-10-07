@@ -1,8 +1,8 @@
 export const STATUSES = [
-  { value: 'todo', label: 'Gözləyir', color: '#94a3b8' },
-  { value: 'in_progress', label: 'İcrada', color: '#f59e0b' },
-  { value: 'done', label: 'Bitib', color: '#22c55e' },
-  { value: 'cancelled', label: 'Ləğv edilib', color: '#ef4444' },
+  { value: 'todo', color: '#94a3b8' },
+  { value: 'in_progress', color: '#f59e0b' },
+  { value: 'done', color: '#22c55e' },
+  { value: 'cancelled', color: '#ef4444' },
 ];
 
 export const statusMeta = (value) => STATUSES.find((s) => s.value === value) ?? STATUSES[0];

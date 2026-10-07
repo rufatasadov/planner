@@ -20,14 +20,14 @@ const ratio = computed(() => (props.totalSec ? Math.min(1, Math.max(0, props.rem
 <template>
   <div class="ring" :class="{ warning }">
     <svg :width="size" :height="size">
-      <circle :cx="size / 2" :cy="size / 2" :r="r" fill="none" stroke="var(--surface-3)" :stroke-width="stroke" />
+      <circle :cx="size / 2" :cy="size / 2" :r="r" fill="none" :style="{ stroke: 'var(--surface-3)' }" :stroke-width="stroke" />
       <circle
         class="ring-progress"
         :cx="size / 2"
         :cy="size / 2"
         :r="r"
         fill="none"
-        :stroke="warning ? 'var(--warning)' : color"
+        :style="{ stroke: warning ? 'var(--warning)' : color }"
         :stroke-width="stroke"
         stroke-linecap="round"
         :stroke-dasharray="circ"

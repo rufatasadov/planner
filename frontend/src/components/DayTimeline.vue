@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { fmtMin } from '../utils/time';
+import { t } from '../i18n';
 
 const props = defineProps({
   plans: { type: Array, default: () => [] },
@@ -68,7 +69,7 @@ const doneCount = (p) => p.tasks.filter((t) => t.status === 'done').length;
           <div class="tl-title">
             <span class="dot" :style="{ background: p.project_color }"></span>
             {{ p.project_name }}
-            <span v-if="state(p) === 'current'" class="live">CANLI</span>
+            <span v-if="state(p) === 'current'" class="live">{{ t('plan.live') }}</span>
           </div>
           <div class="tl-meta">
             {{ fmtMin(p.start_min) }} – {{ fmtMin(p.end_min) }}

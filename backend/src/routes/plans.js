@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db.js';
-import { badRequest, conflict, notFound, requireDate, requireInt } from '../utils/http.js';
+import { badRequest, conflict, notFound, requireDate, requireInt, requireOneOf } from '../utils/http.js';
 import { getOwnedProject } from './projects.js';
 import { getSettings } from './settings.js';
 
@@ -34,7 +34,7 @@ async function loadPlans(db, userId, whereSql, params) {
 
 async function getOwnedPlan(db, userId, id) {
   const [plan] = await loadPlans(db, userId, 'pl.id = $2', [id]);
-  if (!plan) throw notFound('Plan tapılmadı');
+  if (!plan) throw notFound('plan.notFound');
   return plan;
 }
 
@@ -49,11 +49,9 @@ async function attachOpenTasks(db, planId, projectId) {
 }
 
 function validateRange(start, end, settings) {
-  if (start >= end) throw badRequest('Başlama vaxtı bitmə vaxtından əvvəl olmalıdır');
+  if (start >= end) throw badRequest('plan.startBeforeEnd');
   if (start < settings.work_start_min || end > settings.work_end_min) {
-    throw badRequest(
-      `Plan iş saatları daxilində olmalıdır (${fmt(settings.work_start_min)} - ${fmt(settings.work_end_min)})`,
-    );
+    throw badRequest('plan.outsideWorkHours', { start: fmt(settings.work_start_min), end: fmt(settings.work_end_min) });
   }
 }
 
@@ -69,8 +67,9 @@ function assertNoOverlap(items) {
   const pair = findOverlap(items);
   if (pair) {
     throw conflict(
-      `Vaxt kəsişməsi: ${fmt(pair[0].start_min)}-${fmt(pair[0].end_min)} və ${fmt(pair[1].start_min)}-${fmt(pair[1].end_min)}`,
-      { code: 'OVERLAP', plan_ids: pair.map((p) => p.id) },
+      'plan.overlap',
+      { a: `${fmt(pair[0].start_min)}-${fmt(pair[0].end_min)}`, b: `${fmt(pair[1].start_min)}-${fmt(pair[1].end_min)}` },
+      { plan_ids: pair.map((p) => p.id) },
     );
   }
 }
@@ -154,8 +153,7 @@ router.post('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   const id = requireInt(req.params.id, 'id');
-  const shiftMode = req.body.shift_mode ?? 'none';
-  if (!SHIFT_MODES.includes(shiftMode)) throw badRequest(`shift_mode: ${SHIFT_MODES.join(', ')}`);
+  const shiftMode = requireOneOf(req.body.shift_mode ?? 'none', 'shift_mode', SHIFT_MODES);
   const settings = await getSettings(req.userId);
 
   const result = await withTransaction(async (db) => {
@@ -181,10 +179,10 @@ router.put('/:id', async (req, res) => {
 
     for (const u of updates.values()) {
       if (u.start_min >= u.end_min) {
-        throw badRequest(`Növbəti plan (${fmt(u.start_min)}-${fmt(u.end_min)}) üçün vaxt qalmır`);
+        throw badRequest('plan.noTimeForNext', { range: `${fmt(u.start_min)}-${fmt(u.end_min)}` });
       }
       if (u.start_min < settings.work_start_min || u.end_min > settings.work_end_min) {
-        throw badRequest(`Sürüşdürmədən sonra plan iş saatlarından kənara çıxır (${fmt(u.start_min)}-${fmt(u.end_min)})`);
+        throw badRequest('plan.shiftOutsideWorkHours', { range: `${fmt(u.start_min)}-${fmt(u.end_min)}` });
       }
     }
 
@@ -246,10 +244,9 @@ router.post('/:id/sync-tasks', async (req, res) => {
  */
 router.post('/generate', async (req, res) => {
   const sourceDate = requireDate(req.body.source_date, 'source_date');
-  const mode = req.body.mode ?? 'skip';
-  if (!['skip', 'replace'].includes(mode)) throw badRequest("mode: 'skip' və ya 'replace'");
+  const mode = requireOneOf(req.body.mode ?? 'skip', 'mode', ['skip', 'replace']);
   if (!Array.isArray(req.body.target_dates) || !req.body.target_dates.length) {
-    throw badRequest('target_dates boş ola bilməz');
+    throw badRequest('plan.targetDatesEmpty');
   }
   const targets = [...new Set(req.body.target_dates.map((d) => requireDate(d, 'target_dates')))].filter(
     (d) => d !== sourceDate,
@@ -260,7 +257,7 @@ router.post('/generate', async (req, res) => {
       'SELECT * FROM plans WHERE user_id = $1 AND plan_date = $2 ORDER BY start_min',
       [req.userId, sourceDate],
     );
-    if (!source.length) throw badRequest('Mənbə gündə plan yoxdur');
+    if (!source.length) throw badRequest('plan.sourceEmpty');
 
     const result = [];
     for (const date of targets) {
@@ -294,7 +291,7 @@ router.post('/generate', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const id = requireInt(req.params.id, 'id');
   const { rowCount } = await query('DELETE FROM plans WHERE id = $1 AND user_id = $2', [id, req.userId]);
-  if (!rowCount) throw notFound('Plan tapılmadı');
+  if (!rowCount) throw notFound('plan.notFound');
   res.status(204).end();
 });
 

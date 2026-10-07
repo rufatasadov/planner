@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db.js';
-import { badRequest, notFound, requireInt, requireString } from '../utils/http.js';
+import { notFound, requireInt, requireOneOf, requireString } from '../utils/http.js';
 import { getOwnedProject } from './projects.js';
 
 const router = Router();
@@ -9,13 +9,12 @@ export const TASK_STATUSES = ['todo', 'in_progress', 'done', 'cancelled'];
 
 function readStatus(value) {
   if (value === undefined) return undefined;
-  if (!TASK_STATUSES.includes(value)) throw badRequest(`status bunlardan biri olmalıdır: ${TASK_STATUSES.join(', ')}`);
-  return value;
+  return requireOneOf(value, 'status', TASK_STATUSES);
 }
 
 async function getOwnedTask(userId, taskId) {
   const { rows } = await query('SELECT * FROM tasks WHERE id = $1 AND user_id = $2', [taskId, userId]);
-  if (!rows[0]) throw notFound('Task tapılmadı');
+  if (!rows[0]) throw notFound('task.notFound');
   return rows[0];
 }
 
@@ -74,8 +73,7 @@ router.put('/:id', async (req, res) => {
 router.patch('/:id/status', async (req, res) => {
   const id = requireInt(req.params.id, 'id');
   await getOwnedTask(req.userId, id);
-  const status = readStatus(req.body.status);
-  if (!status) throw badRequest('status tələb olunur');
+  const status = requireOneOf(req.body.status, 'status', TASK_STATUSES);
   const { rows } = await query('UPDATE tasks SET status = $2, updated_at = now() WHERE id = $1 RETURNING *', [id, status]);
   res.json(rows[0]);
 });
@@ -83,7 +81,7 @@ router.patch('/:id/status', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const id = requireInt(req.params.id, 'id');
   const { rowCount } = await query('DELETE FROM tasks WHERE id = $1 AND user_id = $2', [id, req.userId]);
-  if (!rowCount) throw notFound('Task tapılmadı');
+  if (!rowCount) throw notFound('task.notFound');
   res.status(204).end();
 });
 

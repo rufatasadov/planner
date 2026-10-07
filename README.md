@@ -24,6 +24,20 @@ Portlar başqa proqramla toqquşarsa, `.env`-də `FRONTEND_PORT`, `BACKEND_PORT`
 
 Cədvəllər backend start olanda avtomatik yaradılır, məlumatlar `planner-data` volume-unda saxlanılır. Kod dəyişəndən sonra `docker compose up -d --build` ilə yenidən qurun. Loglar üçün: `docker compose logs -f backend`.
 
+### Məlumatların serverə köçürülməsi
+
+Serverdəki bazanın **bütün məlumatları silinir** və lokaldakı ilə əvəz olunur. Əməliyyat tək tranzaksiyada gedir, xəta olarsa heç nə dəyişmir.
+
+```bash
+# Bir əmrlə (SSH ilə): export → serverə köçür → import
+./scripts/db-push-to-server.sh user@server /path/to/planner
+
+# və ya əl ilə:
+./scripts/db-export.sh dump.sql                      # lokalda
+scp dump.sql user@server:/tmp/                       # serverə köçür
+./scripts/db-import.sh /tmp/dump.sql                 # serverdə, layihə qovluğunda
+```
+
 ### Docker-siz development (hot reload)
 
 ```bash
@@ -35,7 +49,7 @@ cd frontend && npm install && npm run dev
 
 ## API
 
-Bütün endpoint-lər (auth-dan başqa) `Authorization: Bearer <token>` tələb edir. Vaxtlar gün başlanğıcından dəqiqə ilə ötürülür (`540` = 09:00, `1440` = 24:00), tarixlər `YYYY-MM-DD`.
+Bütün endpoint-lər (auth-dan başqa) `Authorization: Bearer <token>` tələb edir. Xəta cavabları `{ error, code }` formatındadır: `error` mətni `Accept-Language` başlığına görə `az`, `en` və ya `ru` dilində qaytarılır (default `az`), `code` isə dildən asılı olmayan sabit açardır (məs. `plan.overlap`). Vaxtlar gün başlanğıcından dəqiqə ilə ötürülür (`540` = 09:00, `1440` = 24:00), tarixlər `YYYY-MM-DD`.
 
 | Metod | Yol | Təsvir |
 |---|---|---|

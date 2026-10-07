@@ -3,6 +3,7 @@ import { reactive, watch, computed } from 'vue';
 import AppModal from './AppModal.vue';
 import TimeSelect from './TimeSelect.vue';
 import { fmtDuration } from '../utils/time';
+import { t } from '../i18n';
 
 const props = defineProps({
   show: Boolean,
@@ -46,10 +47,10 @@ function submit() {
 </script>
 
 <template>
-  <AppModal :show="show" :title="plan ? 'Planı redaktə et' : 'Yeni plan'" @close="emit('close')">
+  <AppModal :show="show" :title="plan ? t('planForm.editTitle') : t('planForm.newTitle')" @close="emit('close')">
     <form class="form" @submit.prevent="submit">
       <label>
-        Proyekt
+        {{ t('planForm.project') }}
         <div class="project-pick">
           <button
             v-for="p in projects"
@@ -63,31 +64,33 @@ function submit() {
             <span class="dot" :style="{ background: p.color }"></span>{{ p.name }}
           </button>
         </div>
-        <span v-if="!projects.length" class="muted">Əvvəlcə proyekt yaradın.</span>
+        <span v-if="!projects.length" class="muted">{{ t('planForm.noProjects') }}</span>
       </label>
       <p v-if="selectedProject && !plan" class="hint">
-        Bu proyektin <b>{{ selectedProject.open_task_count }}</b> açıq taskı plana avtomatik əlavə olunacaq.
+        {{ t('planForm.openTasksHint', { n: selectedProject.open_task_count }) }}
       </p>
       <div class="row">
         <label>
-          Başlama
+          {{ t('planForm.start') }}
           <TimeSelect v-model="form.start_min" :min="workStart" :max="workEnd - 5" />
         </label>
         <label>
-          Bitmə
+          {{ t('planForm.end') }}
           <TimeSelect v-model="form.end_min" :min="workStart + 5" :max="workEnd" />
         </label>
       </div>
-      <p v-if="form.end_min > form.start_min" class="hint">Müddət: {{ fmtDuration(form.end_min - form.start_min) }}</p>
-      <p v-else class="error-text">Bitmə vaxtı başlamadan sonra olmalıdır</p>
+      <p v-if="form.end_min > form.start_min" class="hint">
+        {{ t('planForm.duration', { d: fmtDuration(form.end_min - form.start_min) }) }}
+      </p>
+      <p v-else class="error-text">{{ t('planForm.endAfterStart') }}</p>
       <label>
-        Qeyd
-        <textarea v-model="form.note" rows="2" placeholder="İstəyə bağlı"></textarea>
+        {{ t('planForm.note') }}
+        <textarea v-model="form.note" rows="2" :placeholder="t('planForm.optional')"></textarea>
       </label>
     </form>
     <template #footer>
-      <button class="btn ghost" @click="emit('close')">Ləğv et</button>
-      <button class="btn primary" :disabled="!valid || saving" @click="submit">Yadda saxla</button>
+      <button class="btn ghost" @click="emit('close')">{{ t('common.cancel') }}</button>
+      <button class="btn primary" :disabled="!valid || saving" @click="submit">{{ t('common.save') }}</button>
     </template>
   </AppModal>
 </template>

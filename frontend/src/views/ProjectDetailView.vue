@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import api, { errMsg } from '../api';
 import { useToast } from '../stores/toast';
 import { STATUSES } from '../utils/status';
+import { t } from '../i18n';
 import TaskStatusSelect from '../components/TaskStatusSelect.vue';
 
 const props = defineProps({ id: String });
@@ -17,22 +18,27 @@ const editTitle = ref('');
 const vFocus = { mounted: (el) => el.focus() };
 
 const FILTERS = [
-  { value: 'open', label: 'Açıq', match: (t) => ['todo', 'in_progress'].includes(t.status) },
-  { value: 'done', label: 'Bitmiş', match: (t) => t.status === 'done' },
-  { value: 'cancelled', label: 'Ləğv', match: (t) => t.status === 'cancelled' },
-  { value: 'all', label: 'Hamısı', match: () => true },
+  { value: 'open', match: (task) => ['todo', 'in_progress'].includes(task.status) },
+  { value: 'done', match: (task) => task.status === 'done' },
+  { value: 'cancelled', match: (task) => task.status === 'cancelled' },
+  { value: 'all', match: () => true },
 ];
 
 const visible = computed(() => tasks.value.filter(FILTERS.find((f) => f.value === filter.value).match));
-const counts = computed(() => Object.fromEntries(STATUSES.map((s) => [s.value, tasks.value.filter((t) => t.status === s.value).length])));
+const counts = computed(() =>
+  Object.fromEntries(STATUSES.map((s) => [s.value, tasks.value.filter((task) => task.status === s.value).length])),
+);
 
 async function load() {
   try {
-    const [p, t] = await Promise.all([api.get(`/projects/${props.id}`), api.get('/tasks', { params: { project_id: props.id } })]);
+    const [p, res] = await Promise.all([
+      api.get(`/projects/${props.id}`),
+      api.get('/tasks', { params: { project_id: props.id } }),
+    ]);
     project.value = p.data;
-    tasks.value = t.data;
+    tasks.value = res.data;
   } catch (e) {
-    toast.error('Yüklənmədi', errMsg(e));
+    toast.error(t('common.loadFailed'), errMsg(e));
   }
 }
 onMounted(load);
@@ -46,7 +52,7 @@ async function addTask() {
     newTitle.value = '';
     if (filter.value !== 'open' && filter.value !== 'all') filter.value = 'open';
   } catch (e) {
-    toast.error('Task əlavə olunmadı', errMsg(e));
+    toast.error(t('tasks.addFailed'), errMsg(e));
   }
 }
 
@@ -57,7 +63,7 @@ async function setStatus(task, status) {
     await api.patch(`/tasks/${task.id}/status`, { status });
   } catch (e) {
     task.status = prev;
-    toast.error('Status dəyişmədi', errMsg(e));
+    toast.error(t('tasks.statusFailed'), errMsg(e));
   }
 }
 
@@ -74,24 +80,24 @@ async function saveEdit(task) {
     const { data } = await api.put(`/tasks/${task.id}`, { title });
     task.title = data.title;
   } catch (e) {
-    toast.error('Yadda saxlanmadı', errMsg(e));
+    toast.error(t('common.saveFailed'), errMsg(e));
   }
 }
 
 async function remove(task) {
-  if (!confirm(`"${task.title}" silinsin?`)) return;
+  if (!confirm(t('tasks.confirmDelete', { title: task.title }))) return;
   try {
     await api.delete(`/tasks/${task.id}`);
-    tasks.value = tasks.value.filter((t) => t.id !== task.id);
+    tasks.value = tasks.value.filter((x) => x.id !== task.id);
   } catch (e) {
-    toast.error('Silinmədi', errMsg(e));
+    toast.error(t('common.deleteFailed'), errMsg(e));
   }
 }
 </script>
 
 <template>
   <div v-if="project">
-    <RouterLink to="/projects" class="back">‹ Proyektlər</RouterLink>
+    <RouterLink to="/projects" class="back">‹ {{ t('projects.title') }}</RouterLink>
     <section class="page-head">
       <div>
         <h1><span class="dot lg" :style="{ background: project.color }"></span> {{ project.name }}</h1>
@@ -99,46 +105,46 @@ async function remove(task) {
       </div>
       <div class="status-counts">
         <span v-for="s in STATUSES" :key="s.value" class="pill" :style="{ '--s': s.color }">
-          {{ s.label }}: <b>{{ counts[s.value] }}</b>
+          {{ t(`status.${s.value}`) }}: <b>{{ counts[s.value] }}</b>
         </span>
       </div>
     </section>
 
     <section class="card">
       <form class="add-task" @submit.prevent="addTask">
-        <input v-model="newTitle" placeholder="Yeni task əlavə et və Enter bas..." maxlength="500" />
-        <button class="btn primary" :disabled="!newTitle.trim()">Əlavə et</button>
+        <input v-model="newTitle" :placeholder="t('tasks.addPlaceholder')" maxlength="500" />
+        <button class="btn primary" :disabled="!newTitle.trim()">{{ t('tasks.add') }}</button>
       </form>
 
       <div class="tabs inline">
         <button v-for="f in FILTERS" :key="f.value" :class="{ active: filter === f.value }" @click="filter = f.value">
-          {{ f.label }}
+          {{ t(`tasks.filter.${f.value}`) }}
         </button>
       </div>
 
       <ul class="task-list big">
         <TransitionGroup name="list">
-          <li v-for="t in visible" :key="t.id" :class="{ done: t.status === 'done' }">
+          <li v-for="task in visible" :key="task.id" :class="{ done: task.status === 'done' }">
             <input
               type="checkbox"
-              :checked="t.status === 'done'"
-              @change="setStatus(t, $event.target.checked ? 'done' : 'todo')"
+              :checked="task.status === 'done'"
+              @change="setStatus(task, $event.target.checked ? 'done' : 'todo')"
             />
             <input
-              v-if="editingId === t.id"
+              v-if="editingId === task.id"
               v-model="editTitle"
-              class="inline-edit"
-              @keyup.enter="saveEdit(t)"
-              @keyup.esc="editingId = null"
-              @blur="saveEdit(t)"
               v-focus
+              class="inline-edit"
+              @keyup.enter="saveEdit(task)"
+              @keyup.esc="editingId = null"
+              @blur="saveEdit(task)"
             />
-            <span v-else class="task-title" title="Redaktə üçün iki dəfə klikləyin" @dblclick="startEdit(t)">{{ t.title }}</span>
-            <TaskStatusSelect :model-value="t.status" @update:model-value="setStatus(t, $event)" />
-            <button class="icon-btn danger" title="Sil" @click="remove(t)">🗑</button>
+            <span v-else class="task-title" :title="t('tasks.dblClickToEdit')" @dblclick="startEdit(task)">{{ task.title }}</span>
+            <TaskStatusSelect :model-value="task.status" @update:model-value="setStatus(task, $event)" />
+            <button class="icon-btn danger" :title="t('common.delete')" @click="remove(task)">🗑</button>
           </li>
         </TransitionGroup>
-        <li v-if="!visible.length" class="muted">Bu filtrdə task yoxdur.</li>
+        <li v-if="!visible.length" class="muted">{{ t('tasks.emptyFilter') }}</li>
       </ul>
     </section>
   </div>

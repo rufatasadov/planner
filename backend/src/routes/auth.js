@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import { signToken, requireAuth } from '../middleware/auth.js';
-import { HttpError, badRequest, conflict, requireString } from '../utils/http.js';
+import { badRequest, conflict, requireString, unauthorized } from '../utils/http.js';
 
 const router = Router();
 
@@ -12,13 +12,13 @@ router.post('/register', async (req, res) => {
   const email = requireString(req.body.email, 'email', { max: 255 }).toLowerCase();
   const name = requireString(req.body.name, 'name', { max: 255 });
   const password = req.body.password;
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw badRequest('Email düzgün deyil');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw badRequest('auth.invalidEmail');
   if (typeof password !== 'string' || password.length < 6) {
-    throw badRequest('Şifrə ən azı 6 simvol olmalıdır');
+    throw badRequest('auth.passwordTooShort');
   }
 
   const exists = await query('SELECT 1 FROM users WHERE email = $1', [email]);
-  if (exists.rowCount) throw conflict('Bu email artıq qeydiyyatdan keçib');
+  if (exists.rowCount) throw conflict('auth.emailTaken');
 
   const hash = await bcrypt.hash(password, 10);
   const { rows } = await query(
@@ -37,14 +37,14 @@ router.post('/login', async (req, res) => {
   const { rows } = await query('SELECT * FROM users WHERE email = $1', [email]);
   const user = rows[0];
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-    throw new HttpError(401, 'Email və ya şifrə yanlışdır');
+    throw unauthorized('auth.wrongCredentials');
   }
   res.json({ token: signToken(user), user: publicUser(user) });
 });
 
 router.get('/me', requireAuth, async (req, res) => {
   const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.userId]);
-  if (!rows[0]) throw new HttpError(401, 'İstifadəçi tapılmadı');
+  if (!rows[0]) throw unauthorized('auth.userNotFound');
   res.json(publicUser(rows[0]));
 });
 

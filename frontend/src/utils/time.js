@@ -1,3 +1,5 @@
+import { t, tm } from '../i18n';
+
 export const pad = (n) => String(n).padStart(2, '0');
 
 export const fmtMin = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
@@ -5,8 +7,8 @@ export const fmtMin = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
 export function fmtDuration(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
-  if (!h) return `${m} dəq`;
-  return m ? `${h} saat ${m} dəq` : `${h} saat`;
+  if (!h) return t('time.minutes', { m });
+  return m ? t('time.hoursMinutes', { h, m }) : t('time.hours', { h });
 }
 
 export function fmtSeconds(sec) {
@@ -38,11 +40,14 @@ export function weekDates(s) {
   return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
 }
 
-export const WEEKDAYS = ['B.e.', 'Ç.a.', 'Ç.', 'C.a.', 'C.', 'Ş.', 'B.'];
-export const WEEKDAYS_FULL = ['Bazar ertəsi', 'Çərşənbə axşamı', 'Çərşənbə', 'Cümə axşamı', 'Cümə', 'Şənbə', 'Bazar'];
-export const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
+export const weekdayShort = (s) => tm('time.weekdaysShort')[weekdayIndex(s)];
 
 export function fmtDateLong(s) {
   const d = parseDate(s);
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${WEEKDAYS_FULL[weekdayIndex(s)]}`;
+  return t('time.dateLong', {
+    day: d.getDate(),
+    month: tm('time.months')[d.getMonth()],
+    year: d.getFullYear(),
+    weekday: tm('time.weekdays')[weekdayIndex(s)],
+  });
 }

@@ -27,7 +27,7 @@ const arcs = computed(() => {
 <template>
   <div class="donut">
     <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`">
-      <circle :cx="size / 2" :cy="size / 2" :r="r" fill="none" stroke="var(--surface-3)" :stroke-width="thickness" />
+      <circle :cx="size / 2" :cy="size / 2" :r="r" fill="none" :style="{ stroke: 'var(--surface-3)' }" :stroke-width="thickness" />
       <g :transform="`rotate(-90 ${size / 2} ${size / 2})`">
         <circle
           v-for="a in arcs"
@@ -37,7 +37,7 @@ const arcs = computed(() => {
           :cy="size / 2"
           :r="r"
           fill="none"
-          :stroke="a.color"
+          :style="{ stroke: a.color }"
           :stroke-width="thickness"
           :stroke-dasharray="a.dash"
           :stroke-dashoffset="a.offset"

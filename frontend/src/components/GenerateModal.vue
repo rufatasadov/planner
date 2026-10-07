@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import AppModal from './AppModal.vue';
-import { addDays, weekDates, weekdayIndex, parseDate, WEEKDAYS, fmtDateLong } from '../utils/time';
+import { addDays, weekDates, weekdayIndex, weekdayShort, parseDate, fmtDateLong } from '../utils/time';
+import { t } from '../i18n';
 
 const props = defineProps({
   show: Boolean,
@@ -17,8 +18,8 @@ const mode = ref('skip');
 const weeks = computed(() => {
   const thisWeek = weekDates(props.sourceDate);
   return [
-    { label: 'Bu həftə', days: thisWeek },
-    { label: 'Gələn həftə', days: weekDates(addDays(thisWeek[0], 7)) },
+    { label: t('generate.thisWeek'), days: thisWeek },
+    { label: t('generate.nextWeek'), days: weekDates(addDays(thisWeek[0], 7)) },
   ];
 });
 
@@ -42,15 +43,12 @@ function pick(filter) {
 </script>
 
 <template>
-  <AppModal :show="show" title="Planı digər günlərə köçür" width="560px" @close="emit('close')">
-    <p class="muted">
-      Mənbə: <b>{{ fmtDateLong(sourceDate) }}</b> ({{ planCount }} plan). Hər yeni plana proyektin həmin andakı açıq
-      taskları əlavə olunur.
-    </p>
+  <AppModal :show="show" :title="t('generate.title')" width="560px" @close="emit('close')">
+    <p class="muted">{{ t('generate.intro', { date: fmtDateLong(sourceDate), n: planCount }) }}</p>
     <div class="chips">
-      <button class="chip" @click="pick((d) => weekdayIndex(d) < 5)">Həftənin qalan iş günləri</button>
-      <button class="chip" @click="pick(() => true)">Həftənin qalan günləri</button>
-      <button class="chip" @click="selected = []">Təmizlə</button>
+      <button class="chip" @click="pick((d) => weekdayIndex(d) < 5)">{{ t('generate.restWorkdays') }}</button>
+      <button class="chip" @click="pick(() => true)">{{ t('generate.restDays') }}</button>
+      <button class="chip" @click="selected = []">{{ t('generate.clear') }}</button>
     </div>
     <div v-for="w in weeks" :key="w.label" class="gen-week">
       <div class="muted small">{{ w.label }}</div>
@@ -63,23 +61,23 @@ function pick(filter) {
           :disabled="d === sourceDate"
           @click="toggle(d)"
         >
-          <span>{{ WEEKDAYS[weekdayIndex(d)] }}</span>
+          <span>{{ weekdayShort(d) }}</span>
           <b>{{ parseDate(d).getDate() }}</b>
         </button>
       </div>
     </div>
     <div class="radio-group">
-      <label><input v-model="mode" type="radio" value="skip" /> Mövcud planlarla kəsişənləri ötür</label>
-      <label><input v-model="mode" type="radio" value="replace" /> Həmin günlərin mövcud planlarını sil və əvəz et</label>
+      <label><input v-model="mode" type="radio" value="skip" /> {{ t('generate.modeSkip') }}</label>
+      <label><input v-model="mode" type="radio" value="replace" /> {{ t('generate.modeReplace') }}</label>
     </div>
     <template #footer>
-      <button class="btn ghost" @click="emit('close')">Ləğv et</button>
+      <button class="btn ghost" @click="emit('close')">{{ t('common.cancel') }}</button>
       <button
         class="btn primary"
         :disabled="!selected.length || saving"
         @click="emit('generate', { target_dates: selected, mode })"
       >
-        {{ selected.length }} günə generasiya et
+        {{ t('generate.submit', { n: selected.length }) }}
       </button>
     </template>
   </AppModal>

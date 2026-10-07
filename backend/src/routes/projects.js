@@ -20,13 +20,13 @@ export async function getOwnedProject(userId, projectId) {
     projectId,
     userId,
   ]);
-  if (!rows[0]) throw notFound('Proyekt tapılmadı');
+  if (!rows[0]) throw notFound('project.notFound');
   return rows[0];
 }
 
 function readColor(value) {
   if (value === undefined) return undefined;
-  if (typeof value !== 'string' || !COLOR_RE.test(value)) throw badRequest('Rəng #RRGGBB formatında olmalıdır');
+  if (typeof value !== 'string' || !COLOR_RE.test(value)) throw badRequest('project.color');
   return value;
 }
 
@@ -68,7 +68,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const id = requireInt(req.params.id, 'id');
   const { rowCount } = await query('DELETE FROM projects WHERE id = $1 AND user_id = $2', [id, req.userId]);
-  if (!rowCount) throw notFound('Proyekt tapılmadı');
+  if (!rowCount) throw notFound('project.notFound');
   res.status(204).end();
 });
 

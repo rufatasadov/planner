@@ -36,7 +36,7 @@ router.put('/', async (req, res) => {
         : current.notify_before_min,
   };
   if (next.work_start_min >= next.work_end_min) {
-    throw badRequest('İş günü başlanğıcı bitişdən əvvəl olmalıdır');
+    throw badRequest('settings.workRange');
   }
   const { rows } = await query(
     `UPDATE user_settings SET work_start_min = $2, work_end_min = $3, notify_before_min = $4

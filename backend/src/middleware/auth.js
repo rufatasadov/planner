@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { query } from '../db.js';
-import { HttpError } from '../utils/http.js';
+import { unauthorized } from '../utils/http.js';
 
 export function signToken(user) {
   return jwt.sign({ sub: user.id, email: user.email }, process.env.JWT_SECRET, {
@@ -11,15 +11,15 @@ export function signToken(user) {
 export async function requireAuth(req, _res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) return next(new HttpError(401, 'Avtorizasiya tələb olunur'));
+  if (!token) return next(unauthorized('auth.required'));
   let payload;
   try {
     payload = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
-    return next(new HttpError(401, 'Token etibarsızdır və ya vaxtı bitib'));
+    return next(unauthorized('auth.invalidToken'));
   }
   const { rowCount } = await query('SELECT 1 FROM users WHERE id = $1', [payload.sub]);
-  if (!rowCount) return next(new HttpError(401, 'İstifadəçi tapılmadı'));
+  if (!rowCount) return next(unauthorized('auth.userNotFound'));
   req.userId = payload.sub;
   next();
 }
