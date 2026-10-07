@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: planner-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: planner
+      POSTGRES_PASSWORD: planner
+      POSTGRES_DB: planner
+    ports:
+      - "5433:5432"
+    volumes:
+      - planner-data:/var/lib/postgresql/data
+
+volumes:
+  planner-data:
