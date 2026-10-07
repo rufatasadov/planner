@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { query } from '../db.js';
 import { HttpError } from '../utils/http.js';
 
 export function signToken(user) {
@@ -7,15 +8,18 @@ export function signToken(user) {
   });
 }
 
-export function requireAuth(req, _res, next) {
+export async function requireAuth(req, _res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return next(new HttpError(401, 'Avtorizasiya tələb olunur'));
+  let payload;
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = payload.sub;
-    next();
+    payload = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
-    next(new HttpError(401, 'Token etibarsızdır və ya vaxtı bitib'));
+    return next(new HttpError(401, 'Token etibarsızdır və ya vaxtı bitib'));
   }
+  const { rowCount } = await query('SELECT 1 FROM users WHERE id = $1', [payload.sub]);
+  if (!rowCount) return next(new HttpError(401, 'İstifadəçi tapılmadı'));
+  req.userId = payload.sub;
+  next();
 }

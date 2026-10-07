@@ -11,6 +11,36 @@ services:
       - "5433:5432"
     volumes:
       - planner-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U planner -d planner"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    container_name: planner-backend
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://planner:planner@db:5432/planner
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is not set (see .env.example)}
+      JWT_EXPIRES_IN: 30d
+      CORS_ORIGIN: "*"
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: planner-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 
 volumes:
   planner-data:

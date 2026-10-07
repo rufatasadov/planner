@@ -5,22 +5,28 @@ Proyekt/task idarəetməsi və günlük saat-saat planlama tətbiqi.
 - **backend/** — Node.js (Express 5) + PostgreSQL, JWT ilə REST API (`/api/v1`). Web və gələcək mobil tətbiq eyni API-dən istifadə edir.
 - **frontend/** — Vue 3 + Vite + Pinia.
 
-## İşə salma
+## İşə salma (Docker)
 
 ```bash
-# 1. PostgreSQL (localhost:5433)
-docker compose up -d
+cp .env.example .env   # JWT_SECRET-i uzun təsadüfi dəyərlə əvəz edin
+docker compose up -d --build
+```
 
-# 2. Backend (http://localhost:3000/api/v1) — cədvəllər start zamanı avtomatik yaradılır
-cd backend
-cp .env.example .env   # JWT_SECRET-i dəyişin
-npm install
-npm run dev
+| Servis | Ünvan |
+|---|---|
+| Frontend (nginx, `/api`-ni backend-ə proxy edir) | http://localhost:5173 |
+| Backend API | http://localhost:3000/api/v1 |
+| PostgreSQL | `localhost:5433` (planner / planner) |
 
-# 3. Frontend (http://localhost:5173)
-cd ../frontend
-npm install
-npm run dev
+Cədvəllər backend start olanda avtomatik yaradılır, məlumatlar `planner-data` volume-unda saxlanılır. Kod dəyişəndən sonra `docker compose up -d --build` ilə yenidən qurun. Loglar üçün: `docker compose logs -f backend`.
+
+### Docker-siz development (hot reload)
+
+```bash
+docker compose up -d db
+docker compose stop backend frontend
+cd backend && cp .env.example .env && npm install && npm run dev
+cd frontend && npm install && npm run dev
 ```
 
 ## API
