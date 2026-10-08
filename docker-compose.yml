@@ -54,8 +54,11 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy-extra:/etc/caddy/extra:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:

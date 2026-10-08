@@ -1,0 +1,12 @@
+# Copy to e.g. crm.caddy on the server. Files matching *.caddy here are loaded by Caddy and are not committed.
+#
+# Sends every plain-HTTP request that is not for the planner domain (server IP, other domains)
+# to another project published on the Docker host, e.g. with ports: ["172.17.0.1:8081:80"].
+:80 {
+	reverse_proxy host.docker.internal:8081
+}
+
+# Or give the other project its own domain with automatic HTTPS:
+# crm.example.com {
+# 	reverse_proxy host.docker.internal:8081
+# }
