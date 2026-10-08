@@ -54,6 +54,27 @@ CREATE TABLE IF NOT EXISTS plans (
 );
 CREATE INDEX IF NOT EXISTS idx_plans_user_date ON plans(user_id, plan_date);
 
+ALTER TABLE user_settings
+  ADD COLUMN IF NOT EXISTS auto_stop             BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS break_reminder_min    INTEGER NOT NULL DEFAULT 15 CHECK (break_reminder_min BETWEEN 0 AND 240),
+  ADD COLUMN IF NOT EXISTS idle_pause_min        INTEGER NOT NULL DEFAULT 10 CHECK (idle_pause_min BETWEEN 0 AND 240),
+  ADD COLUMN IF NOT EXISTS target_efficiency_pct INTEGER NOT NULL DEFAULT 80 CHECK (target_efficiency_pct BETWEEN 1 AND 100),
+  ADD COLUMN IF NOT EXISTS timezone              VARCHAR(64) NOT NULL DEFAULT 'UTC';
+
+-- Each Start/Resume opens a session, Pause closes it. Effective time = sum of sessions,
+-- breaks = gaps between them. end_reason: pause | idle | auto_stop | switch
+CREATE TABLE IF NOT EXISTS work_sessions (
+  id          SERIAL PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan_id     INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+  started_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ended_at    TIMESTAMPTZ,
+  end_reason  VARCHAR(16),
+  CHECK (ended_at IS NULL OR ended_at >= started_at)
+);
+CREATE INDEX IF NOT EXISTS idx_work_sessions_plan ON work_sessions(plan_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_open_work_session ON work_sessions(user_id) WHERE ended_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS plan_tasks (
   plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
   task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,

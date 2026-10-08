@@ -19,6 +19,11 @@ if (!process.env.JWT_SECRET) {
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json());
+// Express 5 leaves req.body undefined when a request has no body.
+app.use((req, _res, next) => {
+  req.body ??= {};
+  next();
+});
 
 const api = express.Router();
 api.get('/health', (_req, res) => res.json({ ok: true }));

@@ -10,6 +10,7 @@ const props = defineProps({
   nowMin: { type: Number, default: null }, // null when the shown day is not today
   nowSec: { type: Number, default: 0 },
   selectedId: { type: Number, default: null },
+  tracking: { type: Object, default: () => ({}) }, // plan id -> { state, pct }
 });
 const emit = defineEmits(['select', 'create']);
 
@@ -70,10 +71,13 @@ const doneCount = (p) => p.tasks.filter((t) => t.status === 'done').length;
             <span class="dot" :style="{ background: p.project_color }"></span>
             {{ p.project_name }}
             <span v-if="state(p) === 'current'" class="live">{{ t('plan.live') }}</span>
+            <span v-if="tracking[p.id]?.state === 'running'" class="trk-badge running" :title="t('tracking.running')">● REC</span>
+            <span v-else-if="tracking[p.id]?.state === 'paused'" class="trk-badge paused" :title="t('tracking.paused')">⏸</span>
           </div>
           <div class="tl-meta">
             {{ fmtMin(p.start_min) }} – {{ fmtMin(p.end_min) }}
             <template v-if="p.tasks.length"> · ✓ {{ doneCount(p) }}/{{ p.tasks.length }}</template>
+            <template v-if="tracking[p.id]?.pct != null"> · ⚡ {{ tracking[p.id].pct }}%</template>
           </div>
         </div>
       </div>

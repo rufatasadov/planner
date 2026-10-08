@@ -29,7 +29,7 @@ fi
 
 {
   echo "SET session_replication_role = replica;"
-  echo "TRUNCATE users, user_settings, projects, tasks, plans, plan_tasks RESTART IDENTITY CASCADE;"
+  echo "TRUNCATE users, user_settings, projects, tasks, plans, plan_tasks, work_sessions RESTART IDENTITY CASCADE;"
   cat "$FILE"
   echo "SET session_replication_role = DEFAULT;"
 } | psql_exec -q -v ON_ERROR_STOP=1 --single-transaction > /dev/null

@@ -393,6 +393,49 @@ input[type='range'] { padding: 0; accent-color: var(--primary); }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
+/* ---------- Time tracking ---------- */
+.tracking { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.tracking:not(.compact) { padding: 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); margin-bottom: 12px; }
+.tracking.running:not(.compact) { border-color: color-mix(in srgb, var(--success) 50%, var(--border)); }
+.tracking.paused:not(.compact) { border-color: color-mix(in srgb, var(--warning) 50%, var(--border)); }
+.trk-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.trk-btn { min-width: 118px; font-weight: 600; transition: transform 0.15s, box-shadow 0.2s; }
+.trk-btn:active { transform: scale(0.96); }
+.trk-btn.start { background: var(--success); border-color: var(--success); color: #fff; }
+.trk-btn.start:hover { box-shadow: 0 0 18px color-mix(in srgb, var(--success) 45%, transparent); }
+.trk-btn.pause { background: var(--warning); border-color: var(--warning); color: #1f1300; }
+.trk-btn.pause:hover { box-shadow: 0 0 18px color-mix(in srgb, var(--warning) 45%, transparent); }
+.trk-clock { text-align: right; }
+.trk-time { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.tracking.compact .trk-time { font-size: 18px; }
+.rec-dot { width: 9px; height: 9px; border-radius: 50%; background: #f43f5e; animation: pulse 1.4s infinite; }
+.trk-break { font-size: 13px; padding: 6px 10px; border-radius: 8px; color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent); font-variant-numeric: tabular-nums; }
+.trk-break.long { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); animation: blink 1.6s infinite; }
+.trk-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.trk-stats > div { display: flex; flex-direction: column; gap: 2px; }
+.trk-stats b { font-variant-numeric: tabular-nums; }
+.eff-text.good { color: var(--success); }
+.eff-text.mid { color: var(--warning); }
+.eff-text.low { color: var(--danger); }
+.eff-bar { position: relative; height: 8px; border-radius: 999px; background: var(--surface-3); margin: 4px 0; }
+.eff-bar.sm { height: 6px; margin: 8px 0; }
+.eff-fill { height: 100%; border-radius: inherit; background: var(--primary); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.eff-fill.good { background: var(--success); }
+.eff-fill.mid { background: var(--warning); }
+.eff-fill.low { background: var(--danger); }
+.eff-target { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--text); opacity: 0.7; border-radius: 2px; }
+.session-bar { position: relative; height: 14px; border-radius: 7px; background: var(--surface-3); overflow: hidden; }
+.sb-plan { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--c) 18%, transparent); border-left: 1px dashed var(--c); border-right: 1px dashed var(--c); }
+.sb-session { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; background: var(--c); opacity: 0.9; }
+.sb-session.running { animation: blink 1.6s infinite; }
+.sb-now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #f43f5e; }
+.trk-badge { font-size: 9px; padding: 1px 5px; border-radius: 4px; letter-spacing: 0.05em; }
+.trk-badge.running { background: var(--success); color: #fff; animation: blink 1.6s infinite; }
+.trk-badge.paused { background: color-mix(in srgb, var(--warning) 25%, transparent); color: var(--warning); }
+.form label.check-row { flex-direction: row; align-items: flex-start; gap: 10px; cursor: pointer; color: var(--text); }
+.check-row input { width: auto; margin-top: 3px; }
+.check-row small { display: block; }
+
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); } 100% { box-shadow: 0 0 0 10px rgba(244, 63, 94, 0); } }
 @keyframes pulse-scale { 50% { transform: scale(1.04); } }

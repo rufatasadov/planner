@@ -3,7 +3,9 @@ import { reactive, ref, onMounted } from 'vue';
 import { useSettingsStore } from '../stores/settings';
 import { useToast } from '../stores/toast';
 import { errMsg, notifyPlansChanged } from '../api';
-import { showNotification } from '../composables/useNotifier';
+import {
+  idlePermissionState, requestIdlePermission, showNotification,
+} from '../composables/useNotifier';
 import { fmtDuration } from '../utils/time';
 import { LOCALES, locale, setLocale, t } from '../i18n';
 import { theme, setTheme } from '../theme';
@@ -11,17 +13,26 @@ import TimeSelect from '../components/TimeSelect.vue';
 
 const settings = useSettingsStore();
 const toast = useToast();
-const form = reactive({ work_start_min: 540, work_end_min: 1440, notify_before_min: 10 });
+const FIELDS = [
+  'work_start_min', 'work_end_min', 'notify_before_min',
+  'auto_stop', 'break_reminder_min', 'idle_pause_min', 'target_efficiency_pct',
+];
+const form = reactive({
+  work_start_min: 540, work_end_min: 1440, notify_before_min: 10,
+  auto_stop: true, break_reminder_min: 15, idle_pause_min: 10, target_efficiency_pct: 80,
+});
 const permission = ref('Notification' in window ? Notification.permission : 'unsupported');
+const idlePermission = ref('prompt');
 
 onMounted(async () => {
+  idlePermission.value = await idlePermissionState();
   await settings.load();
-  Object.assign(form, {
-    work_start_min: settings.work_start_min,
-    work_end_min: settings.work_end_min,
-    notify_before_min: settings.notify_before_min,
-  });
+  FIELDS.forEach((k) => (form[k] = settings[k]));
 });
+
+async function requestIdle() {
+  idlePermission.value = await requestIdlePermission();
+}
 
 async function save() {
   try {
@@ -94,6 +105,44 @@ async function requestPermission() {
           {{ t('settings.test') }}
         </button>
       </div>
+
+      <h3>{{ t('tracking.settingsTitle') }}</h3>
+      <p class="muted">{{ t('tracking.efficiencyHint') }}</p>
+      <label class="check-row">
+        <input v-model="form.auto_stop" type="checkbox" />
+        <span>
+          {{ t('tracking.autoStop') }}
+          <small class="muted">{{ t('tracking.autoStopHint') }}</small>
+        </span>
+      </label>
+      <label>
+        {{ t('tracking.targetLabel') }}
+        <div class="range-row">
+          <input v-model.number="form.target_efficiency_pct" type="range" min="10" max="100" step="5" />
+          <b>{{ form.target_efficiency_pct }}%</b>
+        </div>
+      </label>
+      <label>
+        {{ t('tracking.breakReminderLabel') }}
+        <div class="range-row">
+          <input v-model.number="form.break_reminder_min" type="range" min="0" max="120" step="5" />
+          <b>{{ form.break_reminder_min ? t('time.minutes', { m: form.break_reminder_min }) : t('tracking.off') }}</b>
+        </div>
+      </label>
+      <label>
+        {{ t('tracking.idlePauseLabel') }}
+        <div class="range-row">
+          <input v-model.number="form.idle_pause_min" type="range" min="0" max="60" step="1" />
+          <b>{{ form.idle_pause_min ? t('time.minutes', { m: form.idle_pause_min }) : t('tracking.off') }}</b>
+        </div>
+      </label>
+      <div class="perm">
+        <span>{{ t('tracking.idleDetection') }}: <b>{{ t(`tracking.idlePermission.${idlePermission}`) }}</b></span>
+        <button v-if="idlePermission === 'prompt'" type="button" class="btn ghost sm" @click="requestIdle">
+          {{ t('settings.allow') }}
+        </button>
+      </div>
+      <p class="hint">{{ t('tracking.idleHint') }}</p>
 
       <div class="form-actions">
         <button class="btn primary" :disabled="form.work_end_min <= form.work_start_min">{{ t('common.save') }}</button>

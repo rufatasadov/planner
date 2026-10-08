@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api, { errMsg, notifyPlansChanged } from '../api';
 import { useSettingsStore } from '../stores/settings';
@@ -7,7 +7,7 @@ import { useToast } from '../stores/toast';
 import { useNow } from '../composables/useNow';
 import { t } from '../i18n';
 import {
-  addDays, fmtDateLong, fmtDuration, fmtMin, parseDate, toDateStr, weekDates, weekdayShort,
+  addDays, fmtDateLong, fmtDuration, fmtMin, fmtSeconds, parseDate, toDateStr, weekDates, weekdayShort,
 } from '../utils/time';
 import DayTimeline from '../components/DayTimeline.vue';
 import DonutChart from '../components/DonutChart.vue';
@@ -17,6 +17,8 @@ import PlanFormModal from '../components/PlanFormModal.vue';
 import ShiftChoiceModal from '../components/ShiftChoiceModal.vue';
 import PostponeModal from '../components/PostponeModal.vue';
 import GenerateModal from '../components/GenerateModal.vue';
+import TrackingPanel from '../components/TrackingPanel.vue';
+import { DEVICE_PLAN_KEY, efficiencyPct, elapsedPlanSec, liveTracking } from '../utils/tracking';
 
 const route = useRoute();
 const router = useRouter();
@@ -30,6 +32,8 @@ const projects = ref([]);
 const loading = ref(false);
 const saving = ref(false);
 const selectedId = ref(null);
+const loadedAt = ref(Date.now());
+const trackingBusy = ref(false);
 
 const formOpen = ref(false);
 const editing = ref(null);
@@ -45,6 +49,7 @@ const todayStr = computed(() => toDateStr(now.value));
 const isToday = computed(() => date.value === todayStr.value);
 const nowMin = computed(() => now.value.getHours() * 60 + now.value.getMinutes());
 const nowSec = computed(() => nowMin.value * 60 + now.value.getSeconds());
+const nowMs = computed(() => now.value.getTime());
 
 const currentPlan = computed(() =>
   isToday.value ? plans.value.find((p) => p.start_min <= nowMin.value && nowMin.value < p.end_min) ?? null : null,
@@ -67,6 +72,26 @@ const dayProgress = computed(() => {
   if (date.value > todayStr.value) return 0;
   const p = ((nowMin.value - settings.work_start_min) / workDay.value) * 100;
   return Math.min(100, Math.max(0, p));
+});
+
+const planTracking = computed(() =>
+  Object.fromEntries(
+    plans.value.map((p) => {
+      const live = liveTracking(p, nowMs.value, loadedAt.value);
+      const base = elapsedPlanSec(p, nowMs.value);
+      return [p.id, { ...live, base, pct: efficiencyPct(live.effective, base) }];
+    }),
+  ),
+);
+const dayEffective = computed(() => Object.values(planTracking.value).reduce((s, x) => s + x.effective, 0));
+const dayBreaks = computed(() => Object.values(planTracking.value).reduce((s, x) => s + x.breaks, 0));
+const dayEfficiency = computed(() =>
+  efficiencyPct(dayEffective.value, Object.values(planTracking.value).reduce((s, x) => s + x.base, 0)),
+);
+const dayEffLevel = computed(() => {
+  if (dayEfficiency.value === null) return '';
+  const target = settings.target_efficiency_pct;
+  return dayEfficiency.value >= target ? 'good' : dayEfficiency.value >= target * 0.75 ? 'mid' : 'low';
 });
 
 const segments = computed(() => {
@@ -125,6 +150,7 @@ async function load() {
     ]);
     weekPlans.value = plansRes.data;
     projects.value = projectsRes.data;
+    loadedAt.value = Date.now();
   } catch (e) {
     toast.error(t('common.loadFailed'), errMsg(e));
   } finally {
@@ -137,7 +163,41 @@ watch(date, (d) => {
   router.replace({ query: d === todayStr.value ? {} : { date: d } });
   load();
 });
-onMounted(load);
+// Reload when a plan ends so the server can auto-stop its timer.
+watch(nowMin, (m, prev) => {
+  if (isToday.value && plans.value.some((p) => p.end_min > prev && p.end_min <= m)) load();
+});
+
+onMounted(() => {
+  load();
+  window.addEventListener('tracking-changed', load);
+});
+onUnmounted(() => window.removeEventListener('tracking-changed', load));
+
+async function startTracking(plan) {
+  trackingBusy.value = true;
+  try {
+    await api.post(`/plans/${plan.id}/tracking/start`);
+    localStorage.setItem(DEVICE_PLAN_KEY, String(plan.id));
+    await afterChange();
+  } catch (e) {
+    toast.error(t('tracking.failed'), errMsg(e));
+  } finally {
+    trackingBusy.value = false;
+  }
+}
+
+async function pauseTracking(plan) {
+  trackingBusy.value = true;
+  try {
+    await api.post(`/plans/${plan.id}/tracking/pause`);
+    await afterChange();
+  } catch (e) {
+    toast.error(t('tracking.failed'), errMsg(e));
+  } finally {
+    trackingBusy.value = false;
+  }
+}
 
 function freeSlotFrom(start) {
   let s = Math.max(start, settings.work_start_min);
@@ -341,6 +401,7 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
           :now-min="isToday ? nowMin : null"
           :now-sec="nowSec"
           :selected-id="selected?.id ?? null"
+          :tracking="planTracking"
           @select="selectedId = $event.id"
           @create="openCreate"
         />
@@ -370,6 +431,16 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
                 {{ nextPlan.project_name }} · {{ fmtMin(nextPlan.start_min) }}
               </div>
               <div v-if="countdown.warning" class="warn-text">⏰ {{ t('plan.almostOver') }}</div>
+              <TrackingPanel
+                v-if="currentPlan"
+                compact
+                :plan="currentPlan"
+                :now-ms="nowMs"
+                :loaded-at="loadedAt"
+                :busy="trackingBusy"
+                @start="startTracking(currentPlan)"
+                @pause="pauseTracking(currentPlan)"
+              />
             </div>
           </template>
           <div v-else class="empty-now">
@@ -394,6 +465,24 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
             <b>{{ doneTasks }}/{{ dayTasks.length }}</b>
             <div class="mini-bar ok">
               <div :style="{ width: (dayTasks.length ? (doneTasks / dayTasks.length) * 100 : 0) + '%' }"></div>
+            </div>
+          </div>
+          <div class="stat card">
+            <span class="muted small">{{ t('tracking.effective') }}</span>
+            <b>{{ fmtSeconds(dayEffective) }}</b>
+            <div class="mini-bar ok"><div :style="{ width: Math.min(100, (dayEffective / 60 / Math.max(1, plannedMin)) * 100) + '%' }"></div></div>
+          </div>
+          <div class="stat card">
+            <span class="muted small">{{ t('tracking.breaks') }}</span>
+            <b>{{ fmtSeconds(dayBreaks) }}</b>
+            <div class="mini-bar free"><div :style="{ width: Math.min(100, (dayBreaks / 60 / Math.max(1, plannedMin)) * 100) + '%' }"></div></div>
+          </div>
+          <div class="stat card" :title="t('tracking.efficiencyHint')">
+            <span class="muted small">{{ t('tracking.efficiency') }}</span>
+            <b :class="['eff-text', dayEffLevel]">{{ dayEfficiency === null ? '—' : dayEfficiency + '%' }}</b>
+            <div class="eff-bar sm">
+              <div class="eff-fill" :class="dayEffLevel" :style="{ width: Math.min(dayEfficiency ?? 0, 100) + '%' }"></div>
+              <div class="eff-target" :style="{ left: settings.target_efficiency_pct + '%' }"></div>
             </div>
           </div>
         </section>
@@ -425,6 +514,15 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
               </div>
             </div>
             <p v-if="selected.note" class="note">{{ selected.note }}</p>
+            <TrackingPanel
+              v-if="selected.plan_date <= todayStr"
+              :plan="selected"
+              :now-ms="nowMs"
+              :loaded-at="loadedAt"
+              :busy="trackingBusy"
+              @start="startTracking(selected)"
+              @pause="pauseTracking(selected)"
+            />
             <div class="progress-line">
               <div :style="{ width: (selected.tasks.length ? (planDone(selected) / selected.tasks.length) * 100 : 0) + '%' }"></div>
             </div>

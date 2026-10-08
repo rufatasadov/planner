@@ -3,6 +3,7 @@ import { query, withTransaction } from '../db.js';
 import { badRequest, conflict, notFound, requireDate, requireInt, requireOneOf } from '../utils/http.js';
 import { getOwnedProject } from './projects.js';
 import { getSettings } from './settings.js';
+import { PLAN_END_SQL, closeExpiredSessions, loadTracking } from '../services/tracking.js';
 
 const router = Router();
 
@@ -11,6 +12,7 @@ const SHIFT_MODES = ['none', 'next', 'all'];
 const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 async function loadPlans(db, userId, whereSql, params) {
+  await closeExpiredSessions(db, userId);
   const { rows: plans } = await db.query(
     `SELECT pl.*, p.name AS project_name, p.color AS project_color
      FROM plans pl JOIN projects p ON p.id = pl.project_id
@@ -26,9 +28,11 @@ async function loadPlans(db, userId, whereSql, params) {
      ORDER BY t.created_at`,
     [plans.map((p) => p.id)],
   );
+  const tracking = await loadTracking(db, plans.map((p) => p.id));
   return plans.map((p) => ({
     ...p,
     tasks: tasks.filter((t) => t.plan_id === p.id).map(({ plan_id, ...t }) => t),
+    tracking: tracking.get(p.id),
   }));
 }
 
@@ -111,10 +115,74 @@ router.get('/current', async (req, res) => {
     date,
     minute,
     notify_before_min: settings.notify_before_min,
+    break_reminder_min: settings.break_reminder_min,
+    idle_pause_min: settings.idle_pause_min,
     current,
     next,
+    running: plans.find((p) => p.tracking.state === 'running') ?? null,
     remaining_min: current ? current.end_min - minute : null,
   });
+});
+
+async function getTrackablePlan(db, userId, id) {
+  await getSettings(userId, db);
+  const { rows } = await db.query(
+    `SELECT pl.id, s.auto_stop, ${PLAN_END_SQL} <= now() AS ended
+     FROM plans pl JOIN user_settings s ON s.user_id = pl.user_id
+     WHERE pl.id = $1 AND pl.user_id = $2`,
+    [id, userId],
+  );
+  if (!rows[0]) throw notFound('plan.notFound');
+  return rows[0];
+}
+
+// POST /plans/:id/tracking/start — start or resume work on the plan (stops any other running plan).
+router.post('/:id/tracking/start', async (req, res) => {
+  const id = requireInt(req.params.id, 'id');
+  const plan = await withTransaction(async (db) => {
+    await closeExpiredSessions(db, req.userId);
+    const target = await getTrackablePlan(db, req.userId, id);
+    if (target.auto_stop && target.ended) throw badRequest('tracking.planEnded');
+    const { rows } = await db.query(
+      'SELECT plan_id FROM work_sessions WHERE user_id = $1 AND ended_at IS NULL FOR UPDATE',
+      [req.userId],
+    );
+    if (rows[0]?.plan_id !== id) {
+      if (rows[0]) {
+        await db.query(
+          "UPDATE work_sessions SET ended_at = now(), end_reason = 'switch' WHERE user_id = $1 AND ended_at IS NULL",
+          [req.userId],
+        );
+      }
+      await db.query('INSERT INTO work_sessions (user_id, plan_id) VALUES ($1, $2)', [req.userId, id]);
+    }
+    return getOwnedPlan(db, req.userId, id);
+  });
+  res.json(plan);
+});
+
+// POST /plans/:id/tracking/pause  body: { reason?: 'pause' | 'idle', at?: ISO timestamp }
+// `at` lets a client end the session at the last moment of activity (idle detection).
+router.post('/:id/tracking/pause', async (req, res) => {
+  const id = requireInt(req.params.id, 'id');
+  const reason = requireOneOf(req.body.reason ?? 'pause', 'reason', ['pause', 'idle']);
+  let at = null;
+  if (req.body.at !== undefined) {
+    at = new Date(req.body.at);
+    if (Number.isNaN(at.getTime())) throw badRequest('validation.datetime', { name: 'at' });
+  }
+  const plan = await withTransaction(async (db) => {
+    await closeExpiredSessions(db, req.userId);
+    await getTrackablePlan(db, req.userId, id);
+    await db.query(
+      `UPDATE work_sessions
+       SET ended_at = LEAST(now(), GREATEST(started_at, COALESCE($3::timestamptz, now()))), end_reason = $4
+       WHERE user_id = $1 AND plan_id = $2 AND ended_at IS NULL`,
+      [req.userId, id, at, reason],
+    );
+    return getOwnedPlan(db, req.userId, id);
+  });
+  res.json(plan);
 });
 
 router.get('/:id', async (req, res) => {

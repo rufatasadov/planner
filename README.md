@@ -68,7 +68,7 @@ Bütün endpoint-lər (auth-dan başqa) `Authorization: Bearer <token>` tələb 
 | POST | `/auth/register` | `{ name, email, password }` → `{ token, user }` |
 | POST | `/auth/login` | `{ email, password }` → `{ token, user }` |
 | GET | `/auth/me` | Cari istifadəçi |
-| GET / PUT | `/settings` | `{ work_start_min, work_end_min, notify_before_min }` |
+| GET / PUT | `/settings` | `{ work_start_min, work_end_min, notify_before_min, auto_stop, break_reminder_min, idle_pause_min, target_efficiency_pct, timezone }` |
 | GET / POST | `/projects` | Siyahı / yarat `{ name, description?, color? }` |
 | GET / PUT / DELETE | `/projects/:id` | |
 | GET | `/tasks?project_id=&status=todo,in_progress` | Filtrli siyahı |
@@ -83,6 +83,12 @@ Bütün endpoint-lər (auth-dan başqa) `Authorization: Bearer <token>` tələb 
 | POST | `/plans/:id/sync-tasks` | Proyektə sonradan əlavə olunmuş açıq taskları plana qoşur |
 | POST | `/plans/generate` | `{ source_date, target_dates[], mode: 'skip' \| 'replace' }` |
 | DELETE | `/plans/:id` | |
+| POST | `/plans/:id/tracking/start` | Taymeri başladır / davam etdirir (başqa planın işləyən taymeri dayandırılır) |
+| POST | `/plans/:id/tracking/pause` | `{ reason?: 'pause' \| 'idle', at?: ISO }` — fasilə |
+
+Hər plan obyektində `tracking` sahəsi var:
+`{ state: 'not_started' | 'running' | 'paused' | 'stopped', effective_sec, break_sec, current_break_sec, sessions[] }`.
+Effektivlik = `effective_sec` ÷ planın keçmiş vaxtı. `auto_stop` aktivdirsə, taymer plan bitəndə avtomatik dayanır.
 
 `shift_mode`:
 - `none` — yalnız bu plan dəyişir (kəsişmə olarsa `409`);
