@@ -24,6 +24,18 @@ Portlar başqa proqramla toqquşarsa, `.env`-də `FRONTEND_PORT`, `BACKEND_PORT`
 
 Cədvəllər backend start olanda avtomatik yaradılır, məlumatlar `planner-data` volume-unda saxlanılır. Kod dəyişəndən sonra `docker compose up -d --build` ilə yenidən qurun. Loglar üçün: `docker compose logs -f backend`.
 
+### Production: domen və HTTPS
+
+Serverdə Caddy konteyneri 80/443 portlarını açır, Let's Encrypt sertifikatını avtomatik alıb yeniləyir və trafiki frontend-ə ötürür. Serverdəki `.env`-ə əlavə edin:
+
+```bash
+COMPOSE_PROFILES=prod
+DOMAIN=onelineplanner.com
+FRONTEND_HOST=127.0.0.1
+```
+
+Domenin A qeydi serverin IP-sinə yönəlməli, 80 və 443 portları firewall-da açıq olmalıdır. Sonra `docker compose up -d`; sertifikatın alınmasını `docker compose logs -f caddy` ilə izləyin.
+
 ### Məlumatların serverə köçürülməsi
 
 Serverdəki bazanın **bütün məlumatları silinir** və lokaldakı ilə əvəz olunur. Əməliyyat tək tranzaksiyada gedir, xəta olarsa heç nə dəyişmir.

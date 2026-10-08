@@ -38,9 +38,30 @@ services:
     container_name: planner-frontend
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-5173}:80"
+      - "${FRONTEND_HOST:-0.0.0.0}:${FRONTEND_PORT:-5173}:80"
     depends_on:
       - backend
 
+  # HTTPS reverse proxy for production; enabled with COMPOSE_PROFILES=prod in .env
+  caddy:
+    image: caddy:2-alpine
+    container_name: planner-caddy
+    restart: unless-stopped
+    profiles: ["prod"]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - frontend
+
 volumes:
   planner-data:
+  caddy-data:
+  caddy-config:
