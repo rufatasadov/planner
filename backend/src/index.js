@@ -8,6 +8,7 @@ import settingsRoutes from './routes/settings.js';
 import projectRoutes from './routes/projects.js';
 import taskRoutes from './routes/tasks.js';
 import planRoutes from './routes/plans.js';
+import noteRoutes from './routes/notes.js';
 import { HttpError } from './utils/http.js';
 import { pickLanguage, translate } from './i18n.js';
 
@@ -32,6 +33,7 @@ api.use('/settings', requireAuth, settingsRoutes);
 api.use('/projects', requireAuth, projectRoutes);
 api.use('/tasks', requireAuth, taskRoutes);
 api.use('/plans', requireAuth, planRoutes);
+api.use('/notes', requireAuth, noteRoutes);
 app.use('/api/v1', api);
 
 app.use((_req, _res, next) => next(new HttpError(404, 'common.endpointNotFound')));

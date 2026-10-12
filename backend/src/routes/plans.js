@@ -22,7 +22,8 @@ async function loadPlans(db, userId, whereSql, params) {
   );
   if (!plans.length) return [];
   const { rows: tasks } = await db.query(
-    `SELECT pt.plan_id, t.id, t.title, t.status, t.description
+    `SELECT pt.plan_id, t.id, t.title, t.status, t.description,
+            (SELECT count(*)::int FROM task_notes n WHERE n.task_id = t.id) AS note_count
      FROM plan_tasks pt JOIN tasks t ON t.id = pt.task_id
      WHERE pt.plan_id = ANY($1::int[])
      ORDER BY t.created_at`,

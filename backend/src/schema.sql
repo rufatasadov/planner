@@ -80,3 +80,16 @@ CREATE TABLE IF NOT EXISTS plan_tasks (
   task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   PRIMARY KEY (plan_id, task_id)
 );
+
+-- Work log of a task (Markdown). plan_id is the plan during which the note was written.
+CREATE TABLE IF NOT EXISTS task_notes (
+  id          SERIAL PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  task_id     INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  plan_id     INTEGER REFERENCES plans(id) ON DELETE SET NULL,
+  body        TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_task_notes_task ON task_notes(task_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_task_notes_user ON task_notes(user_id, created_at);

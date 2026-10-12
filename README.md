@@ -86,6 +86,13 @@ Bütün endpoint-lər (auth-dan başqa) `Authorization: Bearer <token>` tələb 
 | POST | `/plans/:id/tracking/start` | Taymeri başladır / davam etdirir (başqa planın işləyən taymeri dayandırılır) |
 | POST | `/plans/:id/tracking/pause` | `{ reason?: 'pause' \| 'idle', at?: ISO }` — fasilə |
 
+| GET | `/notes?task_id=&project_id=&plan_id=&from=&to=&q=&limit=&offset=` | İş qeydləri (yenidən köhnəyə), task/proyekt/plan məlumatı ilə |
+| POST | `/notes` | `{ task_id, body, plan_id? }` — `body` Markdown mətndir |
+| PUT | `/notes/:id` | `{ body?, plan_id? }` |
+| DELETE | `/notes/:id` | |
+
+Tasklarda (`/tasks`, `/plans` cavablarında) `note_count` sahəsi qeydlərin sayını göstərir.
+
 Hər plan obyektində `tracking` sahəsi var:
 `{ state: 'not_started' | 'running' | 'paused' | 'stopped', effective_sec, break_sec, current_break_sec, sessions[] }`.
 Effektivlik = `effective_sec` ÷ planın keçmiş vaxtı. `auto_stop` aktivdirsə, taymer plan bitəndə avtomatik dayanır.

@@ -5,6 +5,7 @@ import { useToast } from '../stores/toast';
 import { STATUSES } from '../utils/status';
 import { t } from '../i18n';
 import TaskStatusSelect from '../components/TaskStatusSelect.vue';
+import TaskNotesModal from '../components/TaskNotesModal.vue';
 
 const props = defineProps({ id: String });
 const toast = useToast();
@@ -15,6 +16,7 @@ const filter = ref('open');
 const newTitle = ref('');
 const editingId = ref(null);
 const editTitle = ref('');
+const notesTask = ref(null);
 const vFocus = { mounted: (el) => el.focus() };
 
 const FILTERS = [
@@ -140,6 +142,14 @@ async function remove(task) {
               @blur="saveEdit(task)"
             />
             <span v-else class="task-title" :title="t('tasks.dblClickToEdit')" @dblclick="startEdit(task)">{{ task.title }}</span>
+            <button
+              class="note-btn"
+              :class="{ has: task.note_count }"
+              :title="t('notes.open')"
+              @click="notesTask = task"
+            >
+              📝<span v-if="task.note_count">{{ task.note_count }}</span>
+            </button>
             <TaskStatusSelect :model-value="task.status" @update:model-value="setStatus(task, $event)" />
             <button class="icon-btn danger" :title="t('common.delete')" @click="remove(task)">🗑</button>
           </li>
@@ -147,5 +157,7 @@ async function remove(task) {
         <li v-if="!visible.length" class="muted">{{ t('tasks.emptyFilter') }}</li>
       </ul>
     </section>
+
+    <TaskNotesModal :task="notesTask" @close="notesTask = null" @count="notesTask && (notesTask.note_count = $event)" />
   </div>
 </template>

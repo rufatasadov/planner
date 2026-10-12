@@ -18,6 +18,7 @@ import ShiftChoiceModal from '../components/ShiftChoiceModal.vue';
 import PostponeModal from '../components/PostponeModal.vue';
 import GenerateModal from '../components/GenerateModal.vue';
 import TrackingPanel from '../components/TrackingPanel.vue';
+import TaskNotesModal from '../components/TaskNotesModal.vue';
 import { DEVICE_PLAN_KEY, efficiencyPct, elapsedPlanSec, liveTracking } from '../utils/tracking';
 
 const route = useRoute();
@@ -41,6 +42,8 @@ const formDefaults = ref({});
 const shiftState = ref(null); // { plan, form, delta, following }
 const postponing = ref(null);
 const generateOpen = ref(false);
+const notesTask = ref(null);
+const notesPlanId = ref(null);
 
 const week = computed(() => weekDates(date.value));
 const plans = computed(() => weekPlans.value.filter((p) => p.plan_date === date.value));
@@ -335,6 +338,16 @@ async function setTaskStatus(task, status) {
   }
 }
 
+function openNotes(task, plan) {
+  notesPlanId.value = plan.id;
+  notesTask.value = task;
+}
+
+function setNoteCount(task, count) {
+  if (!task) return;
+  weekPlans.value.forEach((p) => p.tasks.forEach((x) => x.id === task.id && (x.note_count = count)));
+}
+
 async function afterChange() {
   notifyPlansChanged();
   await load();
@@ -535,6 +548,14 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
                     @change="setTaskStatus(task, $event.target.checked ? 'done' : 'todo')"
                   />
                   <span class="task-title">{{ task.title }}</span>
+                  <button
+                    class="note-btn"
+                    :class="{ has: task.note_count }"
+                    :title="t('notes.open')"
+                    @click="openNotes(task, selected)"
+                  >
+                    📝<span v-if="task.note_count">{{ task.note_count }}</span>
+                  </button>
                   <TaskStatusSelect :model-value="task.status" @update:model-value="setTaskStatus(task, $event)" />
                 </li>
               </TransitionGroup>
@@ -571,6 +592,12 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
       :saving="saving"
       @close="postponing = null"
       @save="postpone"
+    />
+    <TaskNotesModal
+      :task="notesTask"
+      :plan-id="notesPlanId"
+      @close="notesTask = null"
+      @count="setNoteCount(notesTask, $event)"
     />
     <GenerateModal
       :show="generateOpen"

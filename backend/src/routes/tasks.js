@@ -12,7 +12,7 @@ function readStatus(value) {
   return requireOneOf(value, 'status', TASK_STATUSES);
 }
 
-async function getOwnedTask(userId, taskId) {
+export async function getOwnedTask(userId, taskId) {
   const { rows } = await query('SELECT * FROM tasks WHERE id = $1 AND user_id = $2', [taskId, userId]);
   if (!rows[0]) throw notFound('task.notFound');
   return rows[0];
@@ -31,7 +31,11 @@ router.get('/', async (req, res) => {
     params.push(statuses);
     where += ` AND status = ANY($${params.length}::task_status[])`;
   }
-  const { rows } = await query(`SELECT * FROM tasks WHERE ${where} ORDER BY created_at ASC`, params);
+  const { rows } = await query(
+    `SELECT tasks.*, (SELECT count(*)::int FROM task_notes n WHERE n.task_id = tasks.id) AS note_count
+     FROM tasks WHERE ${where} ORDER BY created_at ASC`,
+    params,
+  );
   res.json(rows);
 });
 

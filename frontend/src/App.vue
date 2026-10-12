@@ -41,6 +41,7 @@ function logout() {
       <nav>
         <RouterLink to="/" exact-active-class="active">{{ t('nav.plan') }}</RouterLink>
         <RouterLink to="/projects" active-class="active">{{ t('nav.projects') }}</RouterLink>
+        <RouterLink to="/notes" active-class="active">{{ t('nav.notes') }}</RouterLink>
         <RouterLink to="/settings" active-class="active">{{ t('nav.settings') }}</RouterLink>
       </nav>
       <div class="user">
