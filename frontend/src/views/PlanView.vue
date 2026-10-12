@@ -63,14 +63,25 @@ const selected = computed(
   () => plans.value.find((p) => p.id === selectedId.value) ?? currentPlan.value ?? plans.value[0] ?? null,
 );
 
+const COLLAPSED_KEY = 'plan-collapsed-tasks';
+const collapsedTasks = ref(new Set(JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '[]')));
+
+function toggleTask(task) {
+  const next = new Set(collapsedTasks.value);
+  next.has(task.id) ? next.delete(task.id) : next.add(task.id);
+  collapsedTasks.value = next;
+  localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next]));
+}
+
 const selectedRows = computed(() =>
   selected.value
     ? buildTree(selected.value.tasks).flatMap(({ task, children }) => [
-        { task, sub: false },
-        ...children.map((child) => ({ task: child, sub: true })),
+        { task, sub: false, childCount: children.length },
+        ...(collapsedTasks.value.has(task.id) ? [] : children.map((child) => ({ task: child, sub: true }))),
       ])
     : [],
 );
+const hasSubtaskRows = computed(() => selectedRows.value.some((r) => r.childCount));
 
 const workDay = computed(() => settings.work_end_min - settings.work_start_min);
 const plannedMin = computed(() => plans.value.reduce((s, p) => s + p.end_min - p.start_min, 0));
@@ -560,11 +571,21 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
             <ul class="task-list">
               <TransitionGroup name="list">
                 <li
-                  v-for="{ task, sub } in selectedRows"
+                  v-for="{ task, sub, childCount } in selectedRows"
                   :key="task.id"
                   class="task-row"
                   :class="{ done: task.status === 'done', sub }"
                 >
+                  <button
+                    v-if="!sub && hasSubtaskRows"
+                    class="expand-btn"
+                    :class="{ open: childCount && !collapsedTasks.has(task.id), 'no-subs': !childCount }"
+                    :disabled="!childCount"
+                    :title="collapsedTasks.has(task.id) ? t('tasks.expand') : t('tasks.collapse')"
+                    @click="toggleTask(task)"
+                  >
+                    ▸
+                  </button>
                   <input
                     type="checkbox"
                     :checked="task.status === 'done'"
