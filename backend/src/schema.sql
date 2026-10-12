@@ -41,6 +41,12 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
 
+-- Subtasks: one level deep (a subtask's parent is always a top-level task of the same project).
+ALTER TABLE tasks
+  ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS position  INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id);
+
 CREATE TABLE IF NOT EXISTS plans (
   id          SERIAL PRIMARY KEY,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

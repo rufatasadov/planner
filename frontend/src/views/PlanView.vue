@@ -19,6 +19,7 @@ import PostponeModal from '../components/PostponeModal.vue';
 import GenerateModal from '../components/GenerateModal.vue';
 import TrackingPanel from '../components/TrackingPanel.vue';
 import TaskNotesModal from '../components/TaskNotesModal.vue';
+import { buildTree } from '../utils/tasks';
 import { DEVICE_PLAN_KEY, efficiencyPct, elapsedPlanSec, liveTracking } from '../utils/tracking';
 
 const route = useRoute();
@@ -60,6 +61,15 @@ const currentPlan = computed(() =>
 const nextPlan = computed(() => (isToday.value ? plans.value.find((p) => p.start_min > nowMin.value) ?? null : null));
 const selected = computed(
   () => plans.value.find((p) => p.id === selectedId.value) ?? currentPlan.value ?? plans.value[0] ?? null,
+);
+
+const selectedRows = computed(() =>
+  selected.value
+    ? buildTree(selected.value.tasks).flatMap(({ task, children }) => [
+        { task, sub: false },
+        ...children.map((child) => ({ task: child, sub: true })),
+      ])
+    : [],
 );
 
 const workDay = computed(() => settings.work_end_min - settings.work_start_min);
@@ -330,8 +340,16 @@ async function setTaskStatus(task, status) {
   const apply = (s) => weekPlans.value.forEach((p) => p.tasks.forEach((x) => x.id === task.id && (x.status = s)));
   apply(status);
   try {
-    await api.patch(`/tasks/${task.id}/status`, { status });
-    if (status === 'done') toast.success(t('tasks.completed'), task.title);
+    const { data } = await api.patch(`/tasks/${task.id}/status`, { status });
+    if (data.parent?.changed && data.parent.status === 'done') {
+      toast.success(t('tasks.parentDone', { title: data.parent.title }));
+    } else if (data.parent?.changed) {
+      toast.push({ type: 'info', title: t('tasks.parentReopened', { title: data.parent.title }) });
+    } else if (status === 'done') {
+      toast.success(t('tasks.completed'), task.title);
+    }
+    // Parent status and subtask progress are computed on the server.
+    if (data.parent) await load();
   } catch (e) {
     apply(prev);
     toast.error(t('tasks.statusFailed'), errMsg(e));
@@ -541,13 +559,32 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
             </div>
             <ul class="task-list">
               <TransitionGroup name="list">
-                <li v-for="task in selected.tasks" :key="task.id" :class="{ done: task.status === 'done' }">
+                <li
+                  v-for="{ task, sub } in selectedRows"
+                  :key="task.id"
+                  class="task-row"
+                  :class="{ done: task.status === 'done', sub }"
+                >
                   <input
                     type="checkbox"
                     :checked="task.status === 'done'"
                     @change="setTaskStatus(task, $event.target.checked ? 'done' : 'todo')"
                   />
-                  <span class="task-title">{{ task.title }}</span>
+                  <span class="task-title">
+                    <small v-if="task.parent_title && !sub" class="parent-crumb">{{ task.parent_title }} ›</small>
+                    {{ task.title }}
+                  </span>
+                  <span
+                    v-if="task.subtask_count"
+                    class="sub-progress"
+                    :class="{ complete: task.subtask_done === task.subtask_count }"
+                    :title="t('tasks.subtaskProgress', { done: task.subtask_done, total: task.subtask_count })"
+                  >
+                    <span class="sub-progress-bar">
+                      <span :style="{ width: (task.subtask_done / task.subtask_count) * 100 + '%' }"></span>
+                    </span>
+                    {{ task.subtask_done }}/{{ task.subtask_count }}
+                  </span>
                   <button
                     class="note-btn"
                     :class="{ has: task.note_count }"

@@ -71,10 +71,17 @@ Bütün endpoint-lər (auth-dan başqa) `Authorization: Bearer <token>` tələb 
 | GET / PUT | `/settings` | `{ work_start_min, work_end_min, notify_before_min, auto_stop, break_reminder_min, idle_pause_min, target_efficiency_pct, timezone }` |
 | GET / POST | `/projects` | Siyahı / yarat `{ name, description?, color? }` |
 | GET / PUT / DELETE | `/projects/:id` | |
-| GET | `/tasks?project_id=&status=todo,in_progress` | Filtrli siyahı |
-| POST | `/tasks` | `{ project_id, title, description?, status? }` |
-| PUT / DELETE | `/tasks/:id` | |
+| GET | `/tasks?project_id=&status=todo,in_progress&parent_id=` | Filtrli siyahı (`parent_id=null` — yalnız əsas tasklar) |
+| POST | `/tasks` | `{ project_id, title, description?, status?, parent_id? }` — alt task üçün `project_id` vacib deyil |
+| PUT | `/tasks/:id` | `{ title?, description?, status?, parent_id? }` — `parent_id: null` taskı müstəqil edir |
+| PUT | `/tasks/reorder` | `{ ids: [...] }` — eyni səviyyəli taskların yeni sırası |
+| DELETE | `/tasks/:id` | Alt tasklar da silinir |
 | PATCH | `/tasks/:id/status` | `{ status }` — `todo`, `in_progress`, `done`, `cancelled` |
+
+Alt tasklar bir səviyyəlidir: ana task eyni proyektin əsas taskı olmalıdır. Hər taskda `parent_id`, `parent_title`,
+`position`, `subtask_count`, `subtask_done` sahələri var. Bütün alt tasklar bitəndə (`done`/`cancelled`, ən azı biri `done`)
+ana task avtomatik `done` olur; alt task yenidən açılanda ana task `in_progress`-ə qayıdır. Status, yaratma, köçürmə və silmə
+cavablarında `parent: { id, title, status, changed }` qaytarılır.
 | GET | `/plans?date=` və ya `/plans?from=&to=` | Planlar (proyekt və tasklarla birgə) |
 | GET | `/plans/current?date=&minute=` | Cari/növbəti plan, qalan dəqiqə, bildiriş ayarı |
 | POST | `/plans` | `{ date, project_id, start_min, end_min, note? }` — proyektin açıq taskları avtomatik əlavə olunur |

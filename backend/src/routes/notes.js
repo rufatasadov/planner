@@ -9,12 +9,13 @@ const MAX_BODY = 20000;
 
 const SELECT_NOTES = `
   SELECT n.id, n.task_id, n.plan_id, n.body, n.created_at, n.updated_at,
-         t.title AS task_title, t.status AS task_status,
+         t.title AS task_title, t.status AS task_status, parent.title AS parent_task_title,
          p.id AS project_id, p.name AS project_name, p.color AS project_color,
          pl.plan_date, pl.start_min AS plan_start_min, pl.end_min AS plan_end_min
   FROM task_notes n
   JOIN tasks t ON t.id = n.task_id
   JOIN projects p ON p.id = t.project_id
+  LEFT JOIN tasks parent ON parent.id = t.parent_id
   LEFT JOIN plans pl ON pl.id = n.plan_id`;
 
 async function loadNote(userId, id) {

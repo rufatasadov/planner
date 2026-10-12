@@ -69,7 +69,9 @@ async function remove() {
           <RouterLink :to="`/projects/${note.project_id}`" class="note-chip project">
             <span class="dot" :style="{ background: note.project_color }"></span>{{ note.project_name }}
           </RouterLink>
-          <span class="note-task">{{ note.task_title }}</span>
+          <span class="note-task">
+            <template v-if="note.parent_task_title">{{ note.parent_task_title }} › </template>{{ note.task_title }}
+          </span>
         </template>
         <span v-if="edited" class="muted small">· {{ t('notes.edited') }}</span>
       </div>

@@ -4,6 +4,7 @@ import { badRequest, conflict, notFound, requireDate, requireInt, requireOneOf }
 import { getOwnedProject } from './projects.js';
 import { getSettings } from './settings.js';
 import { PLAN_END_SQL, closeExpiredSessions, loadTracking } from '../services/tracking.js';
+import { SUBTASK_COUNTS_SQL } from '../services/tasks.js';
 
 const router = Router();
 
@@ -22,11 +23,14 @@ async function loadPlans(db, userId, whereSql, params) {
   );
   if (!plans.length) return [];
   const { rows: tasks } = await db.query(
-    `SELECT pt.plan_id, t.id, t.title, t.status, t.description,
-            (SELECT count(*)::int FROM task_notes n WHERE n.task_id = t.id) AS note_count
+    `SELECT pt.plan_id, t.id, t.title, t.status, t.description, t.parent_id, t.position,
+            parent.title AS parent_title,
+            (SELECT count(*)::int FROM task_notes n WHERE n.task_id = t.id) AS note_count,
+            ${SUBTASK_COUNTS_SQL}
      FROM plan_tasks pt JOIN tasks t ON t.id = pt.task_id
+     LEFT JOIN tasks parent ON parent.id = t.parent_id
      WHERE pt.plan_id = ANY($1::int[])
-     ORDER BY t.created_at`,
+     ORDER BY t.position, t.created_at`,
     [plans.map((p) => p.id)],
   );
   const tracking = await loadTracking(db, plans.map((p) => p.id));
