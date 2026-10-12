@@ -46,8 +46,14 @@ function progress(p) {
 
 const STEP = 15;
 const DRAG_THRESHOLD = 4;
-const drag = ref(null); // { plan, mode: 'move' | 'start' | 'end', x0, start, end, active, valid }
+const LONG_PRESS_MS = 350;
+// { plan, mode: 'move' | 'start' | 'end', x0, y0, start, end, active, valid, armed }
+// Touch moves need a long press first so a normal swipe still scrolls the timeline.
+const drag = ref(null);
 let suppressClick = false;
+let pressTimer = null;
+
+const blockTouchScroll = (e) => e.preventDefault();
 
 function pos(p) {
   if (drag.value?.active && drag.value.plan.id === p.id) return { start_min: drag.value.start, end_min: drag.value.end };
@@ -64,16 +70,35 @@ function overlaps(id, start, end) {
 
 function onPointerDown(e, p, mode) {
   if (e.button !== 0 || props.preview) return;
-  drag.value = { plan: p, mode, x0: e.clientX, start: p.start_min, end: p.end_min, active: false, valid: true };
+  const needsPress = e.pointerType === 'touch' && mode === 'move';
+  drag.value = {
+    plan: p, mode, x0: e.clientX, y0: e.clientY, start: p.start_min, end: p.end_min,
+    active: false, valid: true, armed: !needsPress,
+  };
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', stopDrag);
   window.addEventListener('keydown', onKeyDown);
+  if (needsPress) {
+    pressTimer = setTimeout(() => {
+      if (!drag.value) return;
+      drag.value.armed = true;
+      window.addEventListener('touchmove', blockTouchScroll, { passive: false });
+      navigator.vibrate?.(15);
+    }, LONG_PRESS_MS);
+  } else if (e.pointerType === 'touch') {
+    window.addEventListener('touchmove', blockTouchScroll, { passive: false });
+  }
 }
 
 function onPointerMove(e) {
   const d = drag.value;
   if (!d) return;
   const dx = e.clientX - d.x0;
+  if (!d.armed) {
+    if (Math.hypot(dx, e.clientY - d.y0) > 8) stopDrag();
+    return;
+  }
   if (!d.active && Math.abs(dx) < DRAG_THRESHOLD) return;
   d.active = true;
   const dm = (dx / el.value.getBoundingClientRect().width) * span.value;
@@ -108,10 +133,13 @@ function onKeyDown(e) {
 }
 
 function stopDrag() {
+  clearTimeout(pressTimer);
   drag.value = null;
   window.removeEventListener('pointermove', onPointerMove);
   window.removeEventListener('pointerup', onPointerUp);
+  window.removeEventListener('pointercancel', stopDrag);
   window.removeEventListener('keydown', onKeyDown);
+  window.removeEventListener('touchmove', blockTouchScroll);
 }
 onUnmounted(stopDrag);
 
@@ -156,6 +184,7 @@ const doneCount = (p) => p.tasks.filter((t) => t.status === 'done').length;
               selected: p.id === selectedId,
               compact: (pos(p).end_min - pos(p).start_min) * PPM < 110,
               dragging: drag?.active && drag.plan.id === p.id,
+              armed: drag?.armed && !drag.active && drag.plan.id === p.id && drag.mode === 'move',
               invalid: drag?.active && drag.plan.id === p.id && !drag.valid,
               pending: preview?.id === p.id,
             },
@@ -168,6 +197,7 @@ const doneCount = (p) => p.tasks.filter((t) => t.status === 'done').length;
           :title="`${p.project_name} · ${fmtMin(p.start_min)} – ${fmtMin(p.end_min)}\n${t('drag.hint')}`"
           @pointerdown="onPointerDown($event, p, 'move')"
           @click.stop="onBlockClick(p)"
+          @contextmenu.prevent
         >
           <span class="tl-handle start" @pointerdown.stop="onPointerDown($event, p, 'start')"></span>
           <span class="tl-handle end" @pointerdown.stop="onPointerDown($event, p, 'end')"></span>

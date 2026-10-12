@@ -194,11 +194,19 @@ watch(nowMin, (m, prev) => {
   if (isToday.value && plans.value.some((p) => p.end_min > prev && p.end_min <= m)) load();
 });
 
+const narrowQuery = window.matchMedia('(max-width: 640px)');
+const narrow = ref(narrowQuery.matches);
+const onNarrowChange = (e) => (narrow.value = e.matches);
+
 onMounted(() => {
   load();
   window.addEventListener('tracking-changed', load);
+  narrowQuery.addEventListener('change', onNarrowChange);
 });
-onUnmounted(() => window.removeEventListener('tracking-changed', load));
+onUnmounted(() => {
+  window.removeEventListener('tracking-changed', load);
+  narrowQuery.removeEventListener('change', onNarrowChange);
+});
 
 async function startTracking(plan) {
   trackingBusy.value = true;
@@ -411,7 +419,7 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
           <div :style="{ width: dayProgress + '%' }"></div>
         </div>
       </div>
-      <div class="head-actions">
+      <div class="head-actions plan-head-actions">
         <div class="btn-group">
           <button class="btn ghost" @click="date = addDays(date, -1)">‹</button>
           <button class="btn ghost" :class="{ active: isToday }" @click="date = todayStr">{{ t('plan.today') }}</button>
@@ -561,6 +569,7 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
         <section v-if="isToday" class="card now-card" :class="{ warning: countdown?.warning }">
           <template v-if="countdown">
             <CountdownRing
+              :size="narrow ? 132 : 170"
               :total-sec="countdown.total"
               :remaining-sec="countdown.remaining"
               :color="countdown.color"
@@ -584,6 +593,7 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
               <TrackingPanel
                 v-if="currentPlan"
                 compact
+                :class="{ dup: selected?.id === currentPlan.id }"
                 :plan="currentPlan"
                 :now-ms="nowMs"
                 :loaded-at="loadedAt"

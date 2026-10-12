@@ -28,6 +28,13 @@ watch(
 
 onUnmounted(() => notifier.stop());
 
+const navItems = [
+  { to: '/', label: 'nav.plan', icon: '📅', activeAttr: { 'exact-active-class': 'active' } },
+  { to: '/projects', label: 'nav.projects', icon: '🗂️', activeAttr: { 'active-class': 'active' } },
+  { to: '/notes', label: 'nav.notes', icon: '📝', activeAttr: { 'active-class': 'active' } },
+  { to: '/settings', label: 'nav.settings', icon: '⚙️', activeAttr: { 'active-class': 'active' } },
+];
+
 function logout() {
   auth.logout();
   router.push('/login');
@@ -38,17 +45,18 @@ function logout() {
   <div class="app">
     <header v-if="auth.token" class="topbar">
       <RouterLink to="/" class="brand"><span class="brand-dot"></span>Planner</RouterLink>
-      <nav>
-        <RouterLink to="/" exact-active-class="active">{{ t('nav.plan') }}</RouterLink>
-        <RouterLink to="/projects" active-class="active">{{ t('nav.projects') }}</RouterLink>
-        <RouterLink to="/notes" active-class="active">{{ t('nav.notes') }}</RouterLink>
-        <RouterLink to="/settings" active-class="active">{{ t('nav.settings') }}</RouterLink>
+      <nav class="main-nav">
+        <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" v-bind="item.activeAttr">
+          {{ t(item.label) }}
+        </RouterLink>
       </nav>
       <div class="user">
         <PrefsSwitch />
-        <span class="avatar">{{ auth.user?.name?.[0]?.toUpperCase() }}</span>
-        <span class="muted hide-sm">{{ auth.user?.name }}</span>
-        <button class="btn ghost sm" @click="logout">{{ t('nav.logout') }}</button>
+        <span class="avatar hide-sm">{{ auth.user?.name?.[0]?.toUpperCase() }}</span>
+        <span class="muted hide-md">{{ auth.user?.name }}</span>
+        <button class="btn ghost sm logout-btn" :title="t('nav.logout')" @click="logout">
+          <span class="hide-sm">{{ t('nav.logout') }}</span><span class="show-sm">⏻</span>
+        </button>
       </div>
     </header>
     <main :class="{ container: auth.token }">
@@ -58,6 +66,12 @@ function logout() {
         </Transition>
       </RouterView>
     </main>
+    <nav v-if="auth.token" class="tab-bar">
+      <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" v-bind="item.activeAttr">
+        <span class="tab-ico">{{ item.icon }}</span>
+        <span class="tab-label">{{ t(item.label) }}</span>
+      </RouterLink>
+    </nav>
     <ToastHost />
   </div>
 </template>
