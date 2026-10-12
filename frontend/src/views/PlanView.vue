@@ -19,6 +19,7 @@ import PostponeModal from '../components/PostponeModal.vue';
 import GenerateModal from '../components/GenerateModal.vue';
 import TrackingPanel from '../components/TrackingPanel.vue';
 import TaskNotesModal from '../components/TaskNotesModal.vue';
+import AppModal from '../components/AppModal.vue';
 import { buildTree } from '../utils/tasks';
 import { DEVICE_PLAN_KEY, efficiencyPct, elapsedPlanSec, liveTracking } from '../utils/tracking';
 
@@ -45,6 +46,7 @@ const postponing = ref(null);
 const generateOpen = ref(false);
 const notesTask = ref(null);
 const notesPlanId = ref(null);
+const pendingMove = ref(null); // { plan, start_min, end_min } from timeline drag, awaiting confirmation
 
 const week = computed(() => weekDates(date.value));
 const plans = computed(() => weekPlans.value.filter((p) => p.plan_date === date.value));
@@ -291,6 +293,21 @@ async function updatePlan(id, form, shiftMode) {
   }
 }
 
+async function confirmMove() {
+  const { plan, start_min, end_min } = pendingMove.value;
+  saving.value = true;
+  try {
+    await api.put(`/plans/${plan.id}`, { start_min, end_min, shift_mode: 'none' });
+    toast.success(t('plan.updated'), `${plan.project_name}: ${fmtMin(start_min)} – ${fmtMin(end_min)}`);
+    await afterChange();
+  } catch (e) {
+    toast.error(t('plan.updateFailed'), errMsg(e));
+  } finally {
+    pendingMove.value = null;
+    saving.value = false;
+  }
+}
+
 async function deletePlan(plan) {
   const range = `${fmtMin(plan.start_min)}-${fmtMin(plan.end_min)}`;
   if (!confirm(t('plan.confirmDelete', { name: plan.project_name, range }))) return;
@@ -430,24 +447,115 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
       </button>
     </section>
 
+    <section class="card timeline-card">
+      <div class="card-head">
+        <h3>{{ t('plan.schedule') }}</h3>
+        <span class="muted small">{{ t('plan.clickToAdd') }}</span>
+      </div>
+      <DayTimeline
+        :key="date"
+        :plans="plans"
+        :start-min="settings.work_start_min"
+        :end-min="settings.work_end_min"
+        :now-min="isToday ? nowMin : null"
+        :now-sec="nowSec"
+        :selected-id="selected?.id ?? null"
+        :tracking="planTracking"
+        :preview="pendingMove && { id: pendingMove.plan.id, start_min: pendingMove.start_min, end_min: pendingMove.end_min }"
+        @select="selectedId = $event.id"
+        @create="openCreate"
+        @change="pendingMove = $event"
+        @invalid="toast.error(t('drag.overlap'), t('drag.overlapDesc'))"
+      />
+    </section>
+
     <div class="plan-grid">
-      <section class="card timeline-card">
-        <div class="card-head">
-          <h3>{{ t('plan.schedule') }}</h3>
-          <span class="muted small">{{ t('plan.clickToAdd') }}</span>
-        </div>
-        <DayTimeline
-          :plans="plans"
-          :start-min="settings.work_start_min"
-          :end-min="settings.work_end_min"
-          :now-min="isToday ? nowMin : null"
-          :now-sec="nowSec"
-          :selected-id="selected?.id ?? null"
-          :tracking="planTracking"
-          @select="selectedId = $event.id"
-          @create="openCreate"
-        />
-      </section>
+      <div class="plan-main">
+        <Transition name="fade" mode="out-in">
+          <section v-if="selected" :key="selected.id" class="card plan-detail" :style="{ '--c': selected.project_color }">
+            <div class="card-head">
+              <div>
+                <h3><span class="dot" :style="{ background: selected.project_color }"></span> {{ selected.project_name }}</h3>
+                <div class="muted small">
+                  {{ fmtMin(selected.start_min) }} – {{ fmtMin(selected.end_min) }} ·
+                  {{ fmtDuration(selected.end_min - selected.start_min) }}
+                </div>
+              </div>
+              <div class="actions">
+                <button class="icon-btn" :title="t('common.edit')" @click="openEdit(selected)">✎</button>
+                <button class="icon-btn" :title="t('postpone.title')" @click="postponing = selected">⏭</button>
+                <button class="icon-btn" :title="t('plan.syncTasks')" @click="syncTasks(selected)">⟳</button>
+                <button class="icon-btn danger" :title="t('common.delete')" @click="deletePlan(selected)">🗑</button>
+              </div>
+            </div>
+            <p v-if="selected.note" class="note">{{ selected.note }}</p>
+            <TrackingPanel
+              v-if="selected.plan_date <= todayStr"
+              :plan="selected"
+              :now-ms="nowMs"
+              :loaded-at="loadedAt"
+              :busy="trackingBusy"
+              @start="startTracking(selected)"
+              @pause="pauseTracking(selected)"
+            />
+            <div class="progress-line">
+              <div :style="{ width: (selected.tasks.length ? (planDone(selected) / selected.tasks.length) * 100 : 0) + '%' }"></div>
+            </div>
+            <ul class="task-list">
+              <TransitionGroup name="list">
+                <li
+                  v-for="{ task, sub, childCount } in selectedRows"
+                  :key="task.id"
+                  class="task-row"
+                  :class="{ done: task.status === 'done', sub }"
+                >
+                  <button
+                    v-if="!sub && hasSubtaskRows"
+                    class="expand-btn"
+                    :class="{ open: childCount && !collapsedTasks.has(task.id), 'no-subs': !childCount }"
+                    :disabled="!childCount"
+                    :title="collapsedTasks.has(task.id) ? t('tasks.expand') : t('tasks.collapse')"
+                    @click="toggleTask(task)"
+                  >
+                    ▸
+                  </button>
+                  <input
+                    type="checkbox"
+                    :checked="task.status === 'done'"
+                    @change="setTaskStatus(task, $event.target.checked ? 'done' : 'todo')"
+                  />
+                  <span class="task-title">
+                    <small v-if="task.parent_title && !sub" class="parent-crumb">{{ task.parent_title }} ›</small>
+                    {{ task.title }}
+                  </span>
+                  <span
+                    v-if="task.subtask_count"
+                    class="sub-progress"
+                    :class="{ complete: task.subtask_done === task.subtask_count }"
+                    :title="t('tasks.subtaskProgress', { done: task.subtask_done, total: task.subtask_count })"
+                  >
+                    <span class="sub-progress-bar">
+                      <span :style="{ width: (task.subtask_done / task.subtask_count) * 100 + '%' }"></span>
+                    </span>
+                    {{ task.subtask_done }}/{{ task.subtask_count }}
+                  </span>
+                  <button
+                    class="note-btn"
+                    :class="{ has: task.note_count }"
+                    :title="t('notes.open')"
+                    @click="openNotes(task, selected)"
+                  >
+                    📝<span v-if="task.note_count">{{ task.note_count }}</span>
+                  </button>
+                  <TaskStatusSelect :model-value="task.status" @update:model-value="setTaskStatus(task, $event)" />
+                </li>
+              </TransitionGroup>
+              <li v-if="!selected.tasks.length" class="muted">{{ t('plan.noTasks') }}</li>
+            </ul>
+          </section>
+          <section v-else-if="!loading" class="card plan-empty muted">{{ t('plan.noPlansDay') }}</section>
+        </Transition>
+      </div>
 
       <aside class="side">
         <section v-if="isToday" class="card now-card" :class="{ warning: countdown?.warning }">
@@ -538,89 +646,6 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
           />
         </section>
 
-        <Transition name="fade" mode="out-in">
-          <section v-if="selected" :key="selected.id" class="card plan-detail" :style="{ '--c': selected.project_color }">
-            <div class="card-head">
-              <div>
-                <h3><span class="dot" :style="{ background: selected.project_color }"></span> {{ selected.project_name }}</h3>
-                <div class="muted small">
-                  {{ fmtMin(selected.start_min) }} – {{ fmtMin(selected.end_min) }} ·
-                  {{ fmtDuration(selected.end_min - selected.start_min) }}
-                </div>
-              </div>
-              <div class="actions">
-                <button class="icon-btn" :title="t('common.edit')" @click="openEdit(selected)">✎</button>
-                <button class="icon-btn" :title="t('postpone.title')" @click="postponing = selected">⏭</button>
-                <button class="icon-btn" :title="t('plan.syncTasks')" @click="syncTasks(selected)">⟳</button>
-                <button class="icon-btn danger" :title="t('common.delete')" @click="deletePlan(selected)">🗑</button>
-              </div>
-            </div>
-            <p v-if="selected.note" class="note">{{ selected.note }}</p>
-            <TrackingPanel
-              v-if="selected.plan_date <= todayStr"
-              :plan="selected"
-              :now-ms="nowMs"
-              :loaded-at="loadedAt"
-              :busy="trackingBusy"
-              @start="startTracking(selected)"
-              @pause="pauseTracking(selected)"
-            />
-            <div class="progress-line">
-              <div :style="{ width: (selected.tasks.length ? (planDone(selected) / selected.tasks.length) * 100 : 0) + '%' }"></div>
-            </div>
-            <ul class="task-list">
-              <TransitionGroup name="list">
-                <li
-                  v-for="{ task, sub, childCount } in selectedRows"
-                  :key="task.id"
-                  class="task-row"
-                  :class="{ done: task.status === 'done', sub }"
-                >
-                  <button
-                    v-if="!sub && hasSubtaskRows"
-                    class="expand-btn"
-                    :class="{ open: childCount && !collapsedTasks.has(task.id), 'no-subs': !childCount }"
-                    :disabled="!childCount"
-                    :title="collapsedTasks.has(task.id) ? t('tasks.expand') : t('tasks.collapse')"
-                    @click="toggleTask(task)"
-                  >
-                    ▸
-                  </button>
-                  <input
-                    type="checkbox"
-                    :checked="task.status === 'done'"
-                    @change="setTaskStatus(task, $event.target.checked ? 'done' : 'todo')"
-                  />
-                  <span class="task-title">
-                    <small v-if="task.parent_title && !sub" class="parent-crumb">{{ task.parent_title }} ›</small>
-                    {{ task.title }}
-                  </span>
-                  <span
-                    v-if="task.subtask_count"
-                    class="sub-progress"
-                    :class="{ complete: task.subtask_done === task.subtask_count }"
-                    :title="t('tasks.subtaskProgress', { done: task.subtask_done, total: task.subtask_count })"
-                  >
-                    <span class="sub-progress-bar">
-                      <span :style="{ width: (task.subtask_done / task.subtask_count) * 100 + '%' }"></span>
-                    </span>
-                    {{ task.subtask_done }}/{{ task.subtask_count }}
-                  </span>
-                  <button
-                    class="note-btn"
-                    :class="{ has: task.note_count }"
-                    :title="t('notes.open')"
-                    @click="openNotes(task, selected)"
-                  >
-                    📝<span v-if="task.note_count">{{ task.note_count }}</span>
-                  </button>
-                  <TaskStatusSelect :model-value="task.status" @update:model-value="setTaskStatus(task, $event)" />
-                </li>
-              </TransitionGroup>
-              <li v-if="!selected.tasks.length" class="muted">{{ t('plan.noTasks') }}</li>
-            </ul>
-          </section>
-        </Transition>
       </aside>
     </div>
 
@@ -642,6 +667,30 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
       @close="shiftState = null"
       @choose="updatePlan(shiftState.plan.id, shiftState.form, $event)"
     />
+    <AppModal :show="!!pendingMove" :title="t('drag.title')" @close="pendingMove = null">
+      <template v-if="pendingMove">
+        <h3 class="move-plan-name">
+          <span class="dot" :style="{ background: pendingMove.plan.project_color }"></span>
+          {{ pendingMove.plan.project_name }}
+        </h3>
+        <div class="drag-diff">
+          <span class="muted">{{ t('drag.before') }}</span>
+          <span class="old">
+            {{ fmtMin(pendingMove.plan.start_min) }} – {{ fmtMin(pendingMove.plan.end_min) }}
+            · {{ fmtDuration(pendingMove.plan.end_min - pendingMove.plan.start_min) }}
+          </span>
+          <span class="muted">{{ t('drag.after') }}</span>
+          <b>
+            {{ fmtMin(pendingMove.start_min) }} – {{ fmtMin(pendingMove.end_min) }}
+            · {{ fmtDuration(pendingMove.end_min - pendingMove.start_min) }}
+          </b>
+        </div>
+      </template>
+      <template #footer>
+        <button class="btn ghost" :disabled="saving" @click="pendingMove = null">{{ t('common.cancel') }}</button>
+        <button class="btn primary" :disabled="saving" @click="confirmMove">{{ t('drag.confirm') }}</button>
+      </template>
+    </AppModal>
     <PostponeModal
       :show="!!postponing"
       :plan="postponing"
