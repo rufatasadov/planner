@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: planner
-      POSTGRES_PASSWORD: planner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-planner}
       POSTGRES_DB: planner
     ports:
       - "127.0.0.1:${DB_PORT:-5433}:5432"
@@ -23,19 +23,49 @@ services:
     restart: unless-stopped
     environment:
       PORT: 3000
-      DATABASE_URL: postgres://planner:planner@db:5432/planner
+      DATABASE_URL: postgres://planner:${POSTGRES_PASSWORD:-planner}@db:5432/planner
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is not set (see .env.example)}
       JWT_EXPIRES_IN: 30d
-      CORS_ORIGIN: "*"
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-allforaze@gmail.com}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      PADDLE_ENV: ${PADDLE_ENV:-production}
+      PADDLE_API_KEY: ${PADDLE_API_KEY:-}
+      PADDLE_CLIENT_TOKEN: ${PADDLE_CLIENT_TOKEN:-}
+      PADDLE_WEBHOOK_SECRET: ${PADDLE_WEBHOOK_SECRET:-}
+      PADDLE_PRICE_PRO_MONTHLY: ${PADDLE_PRICE_PRO_MONTHLY:-}
+      PADDLE_PRICE_PRO_YEARLY: ${PADDLE_PRICE_PRO_YEARLY:-}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-4000}:3000"
     depends_on:
       db:
         condition: service_healthy
 
+  # Full database dump on start and then every BACKUP_INTERVAL_HOURS into ./backups
+  backup:
+    image: postgres:16-alpine
+    container_name: planner-backup
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/backup-loop.sh"]
+    environment:
+      PGUSER: planner
+      PGDATABASE: planner
+      PGPASSWORD: ${POSTGRES_PASSWORD:-planner}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./scripts/backup-loop.sh:/backup-loop.sh:ro
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
     container_name: planner-frontend
     restart: unless-stopped
     ports:

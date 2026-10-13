@@ -3,6 +3,7 @@ import { ref, reactive, onMounted } from 'vue';
 import api, { errMsg } from '../api';
 import { useToast } from '../stores/toast';
 import { PROJECT_COLORS } from '../utils/status';
+import { isPaymentRequired } from '../utils/billing';
 import { t } from '../i18n';
 import AppModal from '../components/AppModal.vue';
 
@@ -42,7 +43,8 @@ async function save() {
     modalOpen.value = false;
     await load();
   } catch (e) {
-    toast.error(t('common.saveFailed'), errMsg(e));
+    if (isPaymentRequired(e)) modalOpen.value = false;
+    else toast.error(t('common.saveFailed'), errMsg(e));
   }
 }
 

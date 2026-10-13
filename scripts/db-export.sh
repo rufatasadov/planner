@@ -9,7 +9,7 @@ DB_NAME="${DB_NAME:-planner}"
 OUT="${1:-planner-data-$(date +%Y%m%d-%H%M%S).sql}"
 
 docker exec "$CONTAINER" pg_dump -U "$DB_USER" -d "$DB_NAME" \
-  --data-only --no-owner --no-privileges --schema=public > "$OUT"
+  --data-only --no-owner --no-privileges --schema=public --exclude-table=schema_migrations > "$OUT"
 
 echo "Exported to $OUT"
 docker exec "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -Atc "

@@ -8,6 +8,8 @@ import { t } from './i18n';
 import ToastHost from './components/ToastHost.vue';
 import PrefsSwitch from './components/PrefsSwitch.vue';
 import AppLogo from './components/AppLogo.vue';
+import PlanChip from './components/PlanChip.vue';
+import PaywallModal from './components/PaywallModal.vue';
 
 const auth = useAuthStore();
 const settings = useSettingsStore();
@@ -54,6 +56,7 @@ function logout() {
         </RouterLink>
       </nav>
       <div class="user">
+        <PlanChip />
         <PrefsSwitch />
         <span class="avatar hide-sm">{{ auth.user?.name?.[0]?.toUpperCase() }}</span>
         <span class="muted hide-md">{{ auth.user?.name }}</span>
@@ -75,6 +78,7 @@ function logout() {
         <span class="tab-label">{{ t(item.label) }}</span>
       </RouterLink>
     </nav>
+    <PaywallModal v-if="auth.token" />
     <ToastHost />
   </div>
 </template>

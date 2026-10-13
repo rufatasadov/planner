@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db.js';
 import { badRequest, notFound, requireInt, requireString } from '../utils/http.js';
+import { assertProjectLimit } from '../services/billing.js';
 
 const router = Router();
 
@@ -41,6 +42,7 @@ router.post('/', async (req, res) => {
   const name = requireString(req.body.name, 'name', { max: 255 });
   const description = req.body.description ? requireString(req.body.description, 'description', { max: 5000, allowEmpty: true }) : '';
   const color = readColor(req.body.color) ?? '#6366f1';
+  await assertProjectLimit(req.userId, req.userEmail);
   const { rows } = await query(
     'INSERT INTO projects (user_id, name, description, color) VALUES ($1, $2, $3, $4) RETURNING id',
     [req.userId, name, description, color],

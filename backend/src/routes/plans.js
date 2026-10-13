@@ -5,6 +5,7 @@ import { getOwnedProject } from './projects.js';
 import { getSettings } from './settings.js';
 import { PLAN_END_SQL, closeExpiredSessions, loadTracking } from '../services/tracking.js';
 import { SUBTASK_COUNTS_SQL } from '../services/tasks.js';
+import { historyStart } from '../services/billing.js';
 
 const router = Router();
 
@@ -92,13 +93,17 @@ async function dayPlansRaw(db, userId, date) {
 }
 
 // GET /plans?date=YYYY-MM-DD  or  /plans?from=YYYY-MM-DD&to=YYYY-MM-DD
+// On the Free plan days before the history window are left out; the first visible day is sent in X-History-Start.
 router.get('/', async (req, res) => {
-  if (req.query.date) {
-    const date = requireDate(req.query.date);
-    return res.json(await loadPlans({ query }, req.userId, 'pl.plan_date = $2', [date]));
+  const date = req.query.date ? requireDate(req.query.date) : null;
+  let from = date ?? requireDate(req.query.from, 'from');
+  const to = date ?? requireDate(req.query.to, 'to');
+  const start = await historyStart(req.userId, req.userEmail);
+  if (start) {
+    res.set('X-History-Start', start);
+    if (from < start) from = start;
+    if (to < from) return res.json([]);
   }
-  const from = requireDate(req.query.from, 'from');
-  const to = requireDate(req.query.to, 'to');
   res.json(await loadPlans({ query }, req.userId, 'pl.plan_date BETWEEN $2 AND $3', [from, to]));
 });
 

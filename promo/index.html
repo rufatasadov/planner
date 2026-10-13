@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="UTF-8" />
+<title>OneLinePlanner — promo</title>
+<!--
+  1920×1080 promo animation. Every frame is a pure function of time: window.render(t), t in seconds (0..30).
+  Open the file directly to preview (loops in real time); record.mjs calls render(t) frame by frame.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0b1020; }
+  body { font-family: -apple-system, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif; color: #e6e9f5; -webkit-font-smoothing: antialiased; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+  .abs { position: absolute; left: 0; top: 0; will-change: transform, opacity; }
+  .center { transform: translate(-50%, -50%); }
+
+  .glow { position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.55; }
+  .g1 { width: 900px; height: 900px; background: #3730a3; }
+  .g2 { width: 800px; height: 800px; background: #6d28d9; }
+  .g3 { width: 600px; height: 600px; background: #be185d; opacity: 0.25; }
+
+  .headline { font-size: 92px; font-weight: 800; letter-spacing: -0.03em; white-space: nowrap; text-align: center; }
+  .headline .grad, .grad {
+    background: linear-gradient(135deg, #818cf8, #c084fc 55%, #f472b6); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .caption { font-size: 64px; font-weight: 800; letter-spacing: -0.025em; white-space: nowrap; text-align: center; }
+  .caption small { display: block; font-size: 30px; font-weight: 500; color: #8b94b8; letter-spacing: 0; margin-top: 14px; }
+
+  /* scene 1: the app's daily plan with everything "in progress" at once */
+  #appWin { width: 1400px; height: 840px; overflow: hidden; }
+  .win-top { height: 76px; display: flex; align-items: center; gap: 18px; padding: 0 30px; border-bottom: 1px solid #2a3560; background: rgba(11, 16, 32, 0.6); }
+  .win-top .wm { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-right: 26px; }
+  .win-top .wm span { font-weight: 650; }
+  .win-nav { padding: 9px 18px; border-radius: 10px; font-size: 20px; font-weight: 600; color: #8b94b8; }
+  .win-nav.on { background: #232d50; color: #e6e9f5; }
+  .win-sub { height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+  .win-sub h3 { font-size: 26px; font-weight: 750; }
+  .win-sub h3 span { color: #8b94b8; font-weight: 500; }
+  #overload { padding: 8px 18px; border-radius: 999px; font-size: 20px; font-weight: 750; color: #fff; background: #ef4444; box-shadow: 0 0 24px rgba(239, 68, 68, 0.6); }
+  .app-row {
+    width: 1340px; height: 62px; display: flex; align-items: center; gap: 18px; padding: 0 22px; border-radius: 14px;
+    background: #19223f; border: 1px solid #2a3560; border-left: 6px solid var(--c); font-size: 24px; white-space: nowrap;
+  }
+  .app-row .t { flex: 1; font-weight: 650; }
+  .app-row .proj { font-size: 18px; font-weight: 650; padding: 4px 12px; border-radius: 8px; color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+  .app-row .st { font-size: 18px; font-weight: 750; padding: 4px 12px; border-radius: 8px; color: #93c5fd; background: rgba(59, 130, 246, 0.18); }
+  .app-row .tm { width: 150px; text-align: right; font-weight: 750; font-variant-numeric: tabular-nums; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+  .app-row .tm i { width: 12px; height: 12px; border-radius: 50%; background: #f43f5e; box-shadow: 0 0 10px #f43f5e; }
+
+  #mark { width: 0; height: 0; }
+  #mark > * { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); }
+  #markBg { width: 240px; height: 240px; border-radius: 60px; background: linear-gradient(135deg, #6366f1, #a855f7); box-shadow: 0 30px 80px rgba(99, 102, 241, 0.55); }
+  #line { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.35); }
+  #dots { width: 0; height: 0; }
+  .dot { position: absolute; left: 0; top: 0; border-radius: 50%; background: #fff; }
+  #focus { border-radius: 999px; background: #fff; display: grid; place-items: center; box-shadow: 0 0 60px rgba(255, 255, 255, 0.35); }
+  #focus i { display: block; border-radius: 50%; background: linear-gradient(135deg, #ec4899, #8b5cf6); }
+  .wordmark { font-size: 124px; font-weight: 800; letter-spacing: -0.035em; white-space: nowrap; }
+  .wordmark span { font-weight: 650; }
+
+  .card {
+    background: linear-gradient(180deg, #121933, rgba(18, 25, 51, 0.9)); border: 1px solid #2a3560; border-radius: 28px;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+  }
+
+  /* timeline */
+  #tlCard { width: 1640px; height: 380px; }
+  .hour { position: absolute; top: 40px; bottom: 30px; border-left: 2px dashed #2a3560; }
+  .hour span { position: absolute; top: -6px; left: 0; transform: translateX(-50%); font-size: 22px; color: #8b94b8; font-weight: 600; }
+  .block {
+    position: absolute; top: 90px; height: 200px; border-radius: 20px; overflow: hidden; padding: 20px 22px;
+    background: color-mix(in srgb, var(--c) 22%, #19223f); border: 2px solid color-mix(in srgb, var(--c) 60%, transparent);
+    border-top: 8px solid var(--c);
+  }
+  .block .fill { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--c) 35%, transparent); }
+  .block b { position: relative; display: block; font-size: 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .block small { position: relative; display: block; font-size: 22px; white-space: nowrap; color: #a5adcf; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .live { position: relative; display: inline-block; margin-top: 14px; font-size: 18px; font-weight: 800; letter-spacing: 0.08em; padding: 4px 12px; border-radius: 8px; background: #f43f5e; color: #fff; }
+  #nowLine { position: absolute; top: 70px; bottom: 30px; width: 4px; margin-left: -2px; background: #f43f5e; box-shadow: 0 0 24px #f43f5e; border-radius: 2px; }
+  #nowLine::before { content: ''; position: absolute; top: -10px; left: -8px; width: 20px; height: 20px; border-radius: 50%; background: #f43f5e; }
+
+  /* focus */
+  #ring { width: 420px; height: 420px; }
+  #ringTime { font-size: 84px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #ringCap { font-size: 26px; color: #8b94b8; text-align: center; }
+  #trkCard { width: 720px; padding: 44px; }
+  .trk-row { display: flex; align-items: center; justify-content: space-between; }
+  #trkBtn { font-size: 34px; font-weight: 750; padding: 22px 40px; border-radius: 18px; color: #fff; min-width: 250px; text-align: center; }
+  #trkClock { text-align: right; }
+  #trkTime { font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 16px; justify-content: flex-end; }
+  #rec { width: 20px; height: 20px; border-radius: 50%; background: #f43f5e; box-shadow: 0 0 16px #f43f5e; }
+  .muted { color: #8b94b8; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 40px; gap: 10px; }
+  .stats div { font-size: 22px; color: #8b94b8; }
+  .stats b { display: block; font-size: 38px; color: #e6e9f5; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  #effBar { position: relative; height: 18px; border-radius: 99px; background: #232d50; margin-top: 30px; }
+  #effFill { height: 100%; border-radius: 99px; }
+  #effTarget { position: absolute; top: -8px; bottom: -8px; width: 4px; left: 80%; background: #e6e9f5; border-radius: 2px; opacity: 0.8; }
+  #cursor { width: 56px; height: 56px; z-index: 50; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5)); }
+
+  /* tasks */
+  #taskCard { width: 1000px; padding: 40px; }
+  .trow { display: flex; align-items: center; gap: 22px; padding: 22px 26px; border-radius: 18px; background: #19223f; margin-bottom: 14px; font-size: 32px; }
+  .trow.sub { margin-left: 70px; font-size: 30px; }
+  .cb { width: 40px; height: 40px; border-radius: 10px; border: 3px solid #4b5689; display: grid; place-items: center; flex-shrink: 0; font-size: 26px; font-weight: 900; color: #fff; }
+  .ttl { flex: 1; position: relative; white-space: nowrap; }
+  .ttl::after { content: ''; position: absolute; left: 0; top: 52%; height: 3px; width: var(--strike, 0%); background: #8b94b8; border-radius: 2px; }
+  .prog { display: flex; align-items: center; gap: 14px; font-size: 26px; font-weight: 700; color: #8b94b8; font-variant-numeric: tabular-nums; }
+  .prog .bar { width: 120px; height: 10px; border-radius: 99px; background: #232d50; overflow: hidden; }
+  .prog .bar i { display: block; height: 100%; border-radius: 99px; background: #6366f1; }
+  #noteBubble {
+    padding: 24px 30px; border-radius: 22px; font-size: 28px; width: 520px;
+    background: #19223f; border: 1px solid #2a3560; border-left: 8px solid #8b5cf6; box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
+  }
+  #noteBubble b { display: block; font-size: 22px; color: #8b94b8; margin-bottom: 8px; font-weight: 600; }
+
+  /* CTA */
+  #ctaBtn {
+    font-size: 40px; font-weight: 750; padding: 26px 56px; border-radius: 22px; color: #fff; white-space: nowrap;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow: 0 20px 60px rgba(99, 102, 241, 0.6);
+  }
+  #ctaUrl { font-size: 46px; font-weight: 650; color: #c7cbe6; letter-spacing: 0.01em; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="abs glow g1" id="g1"></div>
+  <div class="abs glow g2" id="g2"></div>
+  <div class="abs glow g3" id="g3"></div>
+
+  <!-- Scene 1–3: chaos → one line → logo -->
+  <div class="abs center headline" data-t="chaosTitle" id="chaosTitle" style="font-size: 76px;">Hər şey <span class="grad">eyni anda?</span></div>
+  <div class="abs center card" id="appWin">
+    <div class="win-top">
+      <div id="winLogo"></div>
+      <div class="wm">OneLine<span class="grad">Planner</span></div>
+      <div class="win-nav on" data-t="navPlan">Günlük plan</div>
+      <div class="win-nav" data-t="navProjects">Proyektlər</div>
+      <div class="win-nav" data-t="navNotes">Qeydlər</div>
+    </div>
+    <div class="win-sub">
+      <h3 data-t="winSub">Günlük plan <span>· Bu gün</span></h3>
+      <div id="overload" data-t="overload">⚠ 9 task eyni anda icrada</div>
+    </div>
+  </div>
+  <div id="cards"></div>
+  <div class="abs" id="mark">
+    <div id="markBg"></div>
+    <div id="line"></div>
+    <div id="dots"></div>
+    <div id="focus"><i></i></div>
+  </div>
+  <div class="abs center headline" id="oneLineText" data-t="oneLine">Bir xətt. <span class="grad">Bir iş.</span></div>
+  <div class="abs wordmark" id="wordmark">OneLine<span class="grad">Planner</span></div>
+  <div class="abs center caption" id="tagline" data-t="tagline" style="font-size: 52px; font-weight: 600; color: #c7cbe6;">Eyni anda yalnız bir iş — gününü bir xətt üzərində planla.</div>
+
+  <!-- Scene 4: timeline -->
+  <div class="abs center caption" id="tlCaption" data-t="tlCaption">Gününü <span class="grad">saat-saat</span> planla<small>Hər an yalnız bir plan aktivdir</small></div>
+  <div class="abs center card" id="tlCard">
+    <div id="hours"></div>
+    <div id="blocks"></div>
+    <div id="nowLine"></div>
+  </div>
+
+  <!-- Scene 5: focus timer -->
+  <div class="abs center caption" id="fcCaption" data-t="fcCaption">Fokuslan. <span class="grad">Vaxtını izlə.</span><small>Başla, fasilə ver, effektivliyini gör</small></div>
+  <div class="abs center" id="ringWrap">
+    <svg id="ring" viewBox="0 0 420 420">
+      <circle cx="210" cy="210" r="186" fill="none" stroke="#232d50" stroke-width="28" />
+      <circle id="ringArc" cx="210" cy="210" r="186" fill="none" stroke="#6366f1" stroke-width="28" stroke-linecap="round"
+              transform="rotate(-90 210 210)" stroke-dasharray="1168.67" />
+    </svg>
+    <div class="abs" style="left: 0; top: 0; width: 420px; height: 420px; display: grid; place-content: center;">
+      <div id="ringTime">45:00</div>
+      <div id="ringCap" data-t="ringCap">qaldı</div>
+    </div>
+  </div>
+  <div class="abs center card" id="trkCard">
+    <div class="trk-row">
+      <div id="trkBtn">▶ Başla</div>
+      <div id="trkClock">
+        <div id="trkTime"><span id="rec"></span><span id="trkVal">00:00</span></div>
+        <div class="muted" style="font-size: 24px;" data-t="effTime">Effektiv vaxt</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div data-t="breaks">Fasilələr<b>00:00</b></div>
+      <div data-t="sessions">Sessiyalar<b id="sessions">0</b></div>
+      <div data-t="eff">Effektivlik<b id="effVal">0%</b></div>
+    </div>
+    <div id="effBar"><div id="effFill"></div><div id="effTarget"></div></div>
+  </div>
+  <svg class="abs" id="cursor" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#fff" stroke="#0b1020" stroke-width="1.5" stroke-linejoin="round"/></svg>
+
+  <!-- Scene 6: tasks -->
+  <div class="abs center caption" id="tkCaption" data-t="tkCaption">Taskları bitir. <span class="grad">Nəticəni qeyd et.</span><small>Alt tasklar, statuslar və iş qeydləri bir yerdə</small></div>
+  <div class="abs center card" id="taskCard">
+    <div class="trow" id="tParent">
+      <div class="cb"></div><div class="ttl" data-t="sub0">Auth modulu</div>
+      <div class="prog"><div class="bar"><i id="pBar"></i></div><span id="pTxt">0/3</span></div>
+    </div>
+    <div class="trow sub"><div class="cb"></div><div class="ttl" data-t="sub1">Login endpoint</div></div>
+    <div class="trow sub"><div class="cb"></div><div class="ttl" data-t="sub2">Qeydiyyat və e-poçt təsdiqi</div></div>
+    <div class="trow sub" style="margin-bottom: 0;"><div class="cb"></div><div class="ttl" data-t="sub3">Şifrə bərpası</div></div>
+  </div>
+  <div class="abs" id="noteBubble" data-t="note"><b>📝 İş qeydi · 16:42</b>JWT və testlər hazırdır ✅</div>
+
+  <!-- Scene 7: CTA -->
+  <div class="abs center" id="ctaLogo"></div>
+  <div class="abs center wordmark" id="ctaWord" style="font-size: 110px;">OneLine<span class="grad">Planner</span></div>
+  <div class="abs center" id="ctaUrl">onelineplanner.com</div>
+  <div class="abs center" id="ctaBtn" data-t="cta">Pulsuz başla →</div>
+</div>
+
+<script>
+const DURATION = 30;
+
+// Azerbaijani text lives in the markup; ?lang=en swaps every [data-t] element.
+const LANG = new URLSearchParams(location.search).get('lang') === 'en' ? 'en' : 'az';
+const EN = {
+  chaosTitle: 'Everything <span class="grad">at once?</span>',
+  navPlan: 'Daily plan',
+  navProjects: 'Projects',
+  navNotes: 'Notes',
+  winSub: 'Daily plan <span>· Today</span>',
+  overload: '⚠ 9 tasks in progress at once',
+  oneLine: 'One line. <span class="grad">One task.</span>',
+  tagline: 'One task at a time — plan your day on a single line.',
+  tlCaption: 'Plan your day <span class="grad">hour by hour</span><small>Only one plan is active at any moment</small>',
+  fcCaption: 'Focus. <span class="grad">Track your time.</span><small>Start, pause and see your efficiency</small>',
+  ringCap: 'left',
+  effTime: 'Focused time',
+  breaks: 'Breaks<b>00:00</b>',
+  sessions: 'Sessions<b id="sessions">0</b>',
+  eff: 'Efficiency<b id="effVal">0%</b>',
+  tkCaption: 'Finish tasks. <span class="grad">Log the results.</span><small>Subtasks, statuses and work notes in one place</small>',
+  sub0: 'Auth module',
+  sub1: 'Login endpoint',
+  sub2: 'Sign-up &amp; email verification',
+  sub3: 'Password reset',
+  note: '<b>📝 Work note · 16:42</b>JWT and tests are ready ✅',
+  cta: 'Start for free →',
+};
+const L = (az, en) => (LANG === 'en' ? en : az);
+if (LANG === 'en') {
+  document.documentElement.lang = 'en';
+  document.querySelectorAll('[data-t]').forEach((el) => { el.innerHTML = EN[el.dataset.t]; });
+}
+const W = 1920, H = 1080, CX = W / 2, CY = H / 2;
+
+// ---------- math ----------
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const prog = (t, s, e) => clamp((t - s) / (e - s));
+const lerp = (a, b, k) => a + (b - a) * k;
+const easeOut = (k) => 1 - Math.pow(1 - k, 3);
+const easeInOut = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+const easeBack = (k) => { const c1 = 1.70158, c3 = c1 + 1; return k <= 0 ? 0 : 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); };
+/** fade in over [a,b], fade out over [c,d] */
+const window_ = (t, a, b, c, d) => Math.min(easeOut(prog(t, a, b)), 1 - easeInOut(prog(t, c, d)));
+const pad = (n) => String(Math.floor(n)).padStart(2, '0');
+const mmss = (sec) => `${pad(sec / 60)}:${pad(sec % 60)}`;
+const hhmm = (h) => `${pad(h)}:${pad(Math.round((h % 1) * 60))}`;
+
+const $ = (id) => document.getElementById(id);
+function place(el, x, y, { s = 1, r = 0, o = 1 } = {}) {
+  el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${s}) rotate(${r}deg)`;
+  el.style.opacity = o;
+}
+function placeLeft(el, x, y, { s = 1, o = 1 } = {}) {
+  el.style.transform = `translate(${x}px, ${y}px) translateY(-50%) scale(${s})`;
+  el.style.transformOrigin = 'left center';
+  el.style.opacity = o;
+}
+
+const LOGO_SVG = `<svg width="200" height="200" viewBox="0 0 64 64"><defs>
+  <linearGradient id="cbg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/></linearGradient>
+  <linearGradient id="cdot" x1="26" y1="26" x2="38" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ec4899"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+  <rect width="64" height="64" rx="16" fill="url(#cbg)"/>
+  <path d="M10 32H54" stroke="#fff" stroke-opacity=".35" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="12" cy="32" r="3" fill="#fff" fill-opacity=".55"/><circle cx="52" cy="32" r="3" fill="#fff" fill-opacity=".55"/>
+  <rect id="ctaFocus" x="20" y="24" width="24" height="16" rx="8" fill="#fff"/><circle cx="32" cy="32" r="4" fill="url(#cdot)"/></svg>`;
+$('ctaLogo').innerHTML = LOGO_SVG;
+$('winLogo').innerHTML = LOGO_SVG.replace('width="200" height="200"', 'width="40" height="40"').replace('id="ctaFocus" ', '');
+$('winLogo').style.display = 'flex';
+$('ctaLogo').style.filter = 'drop-shadow(0 30px 60px rgba(99,102,241,.55))';
+
+// ---------- scene 1 data ----------
+// [title, color, project, timer start (s), timer speed]
+const CHAOS = [
+  [L('Login səhifəsi', 'Login page'), '#6366f1', 'Auth', 1520, 1],
+  [L('API sənədləri', 'API docs'), '#f59e0b', 'Backend', 3310, 1],
+  [L('Hesabat ixracı', 'Report export'), '#22c55e', L('Analitika', 'Analytics'), 745, 1],
+  [L('Bug #142 — tarix filtri', 'Bug #142 — date filter'), '#ef4444', 'Backend', 2280, 1],
+  [L('Landing dizaynı', 'Landing page design'), '#ec4899', L('Marketinq', 'Marketing'), 4105, 1],
+  [L('Ödəniş inteqrasiyası', 'Payment integration'), '#06b6d4', 'Billing', 590, 1],
+  [L('Mobil menyu', 'Mobile menu'), '#8b5cf6', 'Frontend', 1875, 1],
+  [L('Müştəri ilə görüş', 'Client meeting'), '#14b8a6', L('Satış', 'Sales'), 260, 1],
+  [L('Testlər', 'Tests'), '#eab308', 'QA', 3020, 1],
+];
+const N = CHAOS.length; // 9 → the middle one (index 4) becomes the "one task"
+const MID = 4;
+const ROW_Y0 = 170 + 76 + 64 + 36, ROW_GAP = 72;
+const hms = (s) => `${pad(s / 3600)}:${pad((s % 3600) / 60)}:${pad(s % 60)}`;
+const cards = CHAOS.map(([title, c, proj]) => {
+  const el = document.createElement('div');
+  el.className = 'abs app-row';
+  el.style.setProperty('--c', c);
+  el.innerHTML = `<span class="t">${title}</span><span class="proj">${proj}</span><span class="st">${L('İcrada', 'In progress')}</span><span class="tm"><i></i><b></b></span>`;
+  $('cards').appendChild(el);
+  return { el, timer: el.querySelector('.tm b'), rec: el.querySelector('.tm i') };
+});
+const dots = CHAOS.map(([, c]) => {
+  const el = document.createElement('div');
+  el.className = 'dot';
+  el.style.background = c;
+  $('dots').appendChild(el);
+  return el;
+});
+const DOT_GAP = 150;
+
+// ---------- scene 4 data ----------
+const TL_W = 1500, TL_X = 70; // inside card
+const hx = (h) => TL_X + ((h - 9) / 9) * TL_W;
+for (let h = 9; h <= 18; h++) {
+  const el = document.createElement('div');
+  el.className = 'hour';
+  el.style.left = hx(h) + 'px';
+  el.innerHTML = `<span>${pad(h)}:00</span>`;
+  $('hours').appendChild(el);
+}
+const PLANS = [
+  ['Backend API', '#6366f1', 9, 11],
+  [L('Dizayn', 'Design'), '#f59e0b', 11.25, 12.5],
+  [L('Görüş', 'Sync'), '#22c55e', 13, 14],
+  [L('Hesabat', 'Report'), '#ec4899', 14.25, 16.5],
+  ['Review', '#06b6d4', 16.75, 18],
+].map(([name, c, s, e]) => {
+  const el = document.createElement('div');
+  el.className = 'block';
+  el.style.setProperty('--c', c);
+  el.style.left = hx(s) + 'px';
+  el.style.width = hx(e) - hx(s) - 6 + 'px';
+  el.innerHTML = `<div class="fill"></div><b>${name}</b><small>${hhmm(s)} – ${hhmm(e)}</small><span class="live">${L('CANLI', 'LIVE')}</span>`;
+  $('blocks').appendChild(el);
+  return { el, s, e, fill: el.querySelector('.fill'), live: el.querySelector('.live') };
+});
+
+const subRows = [...document.querySelectorAll('#taskCard .trow')];
+
+// ---------- render ----------
+function render(t) {
+  // background glows drift slowly
+  place($('g1'), 500 + Math.sin(t * 0.25) * 200, 300 + Math.cos(t * 0.2) * 120);
+  place($('g2'), 1450 + Math.cos(t * 0.22) * 180, 780 + Math.sin(t * 0.3) * 120);
+  place($('g3'), 960 + Math.sin(t * 0.35) * 400, 540 + Math.cos(t * 0.27) * 260);
+
+  // ----- Scene 1: chaos -----
+  place($('chaosTitle'), CX, 88, { o: window_(t, 0.4, 1.0, 2.9, 3.4), s: lerp(0.94, 1, easeOut(prog(t, 0.4, 1.3))) });
+  place($('appWin'), CX, 590, { o: window_(t, 0, 0.5, 3.0, 3.6), s: lerp(0.96, 1, easeOut(prog(t, 0, 0.6))) });
+  const over = easeBack(prog(t, 1.3, 1.7));
+  $('overload').style.transform = `scale(${Math.max(0, over) * (1 + 0.05 * Math.sin(t * 9) * prog(t, 1.7, 2))})`;
+  $('overload').style.opacity = clamp(over * 2);
+  const shake = 4 * prog(t, 1.6, 3.0);
+  cards.forEach(({ el, timer, rec }, i) => {
+    const [, , , t0] = CHAOS[i];
+    const a = easeOut(prog(t, 0.25 + i * 0.08, 0.65 + i * 0.08));
+    const raw = prog(t, 3.1 + i * 0.06, 4.3 + i * 0.06);
+    const c = easeInOut(raw);
+    const wob = 1 - c;
+    const x = CX + (1 - a) * 40 + Math.sin(t * 23 + i * 1.7) * shake * wob;
+    const y = ROW_Y0 + i * ROW_GAP + Math.cos(t * 19 + i) * shake * 0.5 * wob;
+    const tx = CX + (i - MID) * DOT_GAP, ty = CY;
+    place(el, lerp(x, tx, c), lerp(y, ty, c), {
+      s: lerp(1, 0.03, easeInOut(prog(raw, 0, 0.55))),
+      o: a * (1 - prog(raw, 0.55, 0.85)),
+    });
+    timer.textContent = hms(t0 + Math.floor(t * 7));
+    rec.style.opacity = 0.4 + 0.6 * Math.abs(Math.sin(t * 4 + i));
+  });
+
+  // ----- Scene 2/3: one line → logo -----
+  const groupX = lerp(CX, 560, easeInOut(prog(t, 8.4, 9.2)));
+  const groupY = lerp(CY, 470, easeInOut(prog(t, 8.4, 9.2)));
+  const toLogo = easeInOut(prog(t, 7.4, 8.4));
+  const markOut = 1 - easeInOut(prog(t, 12.3, 12.9));
+  place($('mark'), groupX, groupY, { o: markOut });
+
+  const lineW = lerp(1400 * easeInOut(prog(t, 3.2, 4.1)), 165, toLogo);
+  const line = $('line');
+  line.style.width = lineW + 'px';
+  line.style.height = lerp(6, 15, toLogo) + 'px';
+  line.style.opacity = t < 3.2 ? 0 : 1;
+
+  dots.forEach((el, i) => {
+    const c = prog(t, 3.1 + i * 0.06, 4.3 + i * 0.06);
+    let o = prog(c, 0.55, 0.85);
+    const isEnd = i === 0 || i === N - 1;
+    if (i === MID) o *= 1 - prog(t, 5.4, 5.8);
+    else o *= lerp(1, 0.45, easeOut(prog(t, 5.4, 6.2)));
+    if (!isEnd && i !== MID) o *= 1 - toLogo;
+    let x = (i - MID) * DOT_GAP;
+    if (isEnd) x = lerp(x, Math.sign(x) * 75, toLogo);
+    const size = isEnd ? lerp(18, 22, toLogo) : 18;
+    el.style.width = el.style.height = size + 'px';
+    el.style.background = isEnd ? `color-mix(in srgb, ${CHAOS[i][1]} ${100 - toLogo * 100}%, rgba(255,255,255,.6))` : CHAOS[i][1];
+    el.style.transform = `translate(${x}px, 0) translate(-50%, -50%)`;
+    el.style.opacity = o;
+  });
+
+  const f = easeBack(prog(t, 5.4, 6.4));
+  const focus = $('focus');
+  focus.style.width = lerp(lerp(18, 150, f), 90, toLogo) + 'px';
+  focus.style.height = lerp(lerp(18, 100, f), 60, toLogo) + 'px';
+  focus.style.opacity = prog(t, 5.4, 5.7);
+  const inner = focus.querySelector('i');
+  inner.style.width = inner.style.height = lerp(lerp(8, 40, f), 30, toLogo) + 'px';
+
+  const bg = easeBack(prog(t, 7.9, 8.8));
+  $('markBg').style.transform = `translate(-50%, -50%) scale(${Math.max(0, bg)})`;
+  $('markBg').style.opacity = clamp(bg * 2);
+
+  place($('oneLineText'), CX, 720, { o: window_(t, 5.9, 6.5, 7.1, 7.5), s: lerp(0.96, 1, easeOut(prog(t, 5.9, 6.6))) });
+  placeLeft($('wordmark'), lerp(700, 730, 1 - easeOut(prog(t, 9.0, 9.8))), 470, { o: Math.min(easeOut(prog(t, 9.0, 9.8)), markOut) });
+  place($('tagline'), CX, 680, { o: Math.min(easeOut(prog(t, 9.9, 10.7)), markOut) });
+
+  // ----- Scene 4: timeline -----
+  const s4 = window_(t, 13.0, 13.5, 18.6, 19.0);
+  place($('tlCaption'), CX, 220, { o: s4 });
+  place($('tlCard'), CX, 640, { o: s4, s: lerp(0.96, 1, easeOut(prog(t, 13.0, 13.6))) });
+  const nowH = lerp(9.6, 17.4, prog(t, 14.6, 18.6));
+  $('nowLine').style.left = hx(nowH) + 'px';
+  $('nowLine').style.opacity = prog(t, 14.4, 14.8);
+  PLANS.forEach((p, i) => {
+    const a = easeOut(prog(t, 13.4 + i * 0.22, 13.9 + i * 0.22));
+    const showNow = t >= 14.4;
+    const past = showNow && p.e <= nowH;
+    const current = showNow && p.s <= nowH && nowH < p.e;
+    p.el.style.transform = `translateY(${(1 - a) * 50}px)`;
+    p.el.style.opacity = a * (past ? 0.4 : 1);
+    p.el.style.boxShadow = current ? `0 0 ${30 + Math.sin(t * 6) * 10}px color-mix(in srgb, ${p.el.style.getPropertyValue('--c')} 70%, transparent)` : 'none';
+    p.fill.style.width = current ? ((nowH - p.s) / (p.e - p.s)) * 100 + '%' : past ? '100%' : '0%';
+    p.fill.style.opacity = past ? 0 : 1;
+    p.live.style.display = current ? 'inline-block' : 'none';
+    p.live.style.opacity = 0.6 + 0.4 * Math.abs(Math.sin(t * 4));
+  });
+
+  // ----- Scene 5: focus timer -----
+  const s5 = window_(t, 19.0, 19.5, 24.1, 24.5);
+  place($('fcCaption'), CX, 200, { o: s5 });
+  place($('ringWrap'), 600, 640, { o: s5, s: lerp(0.9, 1, easeOut(prog(t, 19.0, 19.7))) });
+  place($('trkCard'), 1270, 640, { o: s5, s: lerp(0.9, 1, easeOut(prog(t, 19.1, 19.8))) });
+  const remaining = Math.max(0, 45 * 60 - Math.max(0, t - 19.4) * 420);
+  $('ringTime').textContent = mmss(remaining);
+  $('ringArc').style.strokeDashoffset = 1168.67 * (1 - remaining / 3600);
+  const started = t >= 20.35;
+  const press = t >= 20.15 && t < 20.45 ? 0.93 : 1;
+  const btn = $('trkBtn');
+  btn.textContent = started ? L('⏸ Pauza', '⏸ Pause') : L('▶ Başla', '▶ Start');
+  btn.style.background = started ? '#f59e0b' : '#22c55e';
+  btn.style.color = started ? '#1f1300' : '#fff';
+  btn.style.transform = `scale(${press})`;
+  btn.style.boxShadow = started ? '0 0 40px rgba(245,158,11,.45)' : '0 0 40px rgba(34,197,94,.45)';
+  $('rec').style.opacity = started ? 0.5 + 0.5 * Math.abs(Math.sin(t * 4)) : 0;
+  $('trkVal').textContent = mmss(started ? (t - 20.35) * 330 : 0);
+  $('sessions').textContent = started ? '1' : '0';
+  const pct = Math.round(92 * easeOut(prog(t, 20.6, 23.6)));
+  $('effVal').textContent = pct + '%';
+  const effColor = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+  $('effVal').style.color = effColor;
+  $('effFill').style.width = pct + '%';
+  $('effFill').style.background = effColor;
+  // cursor flies to the Start button and clicks it
+  const cur = easeInOut(prog(t, 19.5, 20.15));
+  const cx = lerp(1700, 1095, cur), cy = lerp(1000, 548, cur);
+  $('cursor').style.transform = `translate(${cx}px, ${cy}px) scale(${press === 1 ? 1 : 0.85})`;
+  $('cursor').style.opacity = window_(t, 19.4, 19.6, 21.0, 21.4);
+
+  // ----- Scene 6: tasks -----
+  const s6 = window_(t, 24.5, 24.9, 27.3, 27.6);
+  place($('tkCaption'), CX, 190, { o: s6 });
+  place($('taskCard'), 740, 640, { o: s6, s: lerp(0.94, 1, easeOut(prog(t, 24.5, 25.1))) });
+  const ticks = [26.45, 25.1, 25.6, 26.05];
+  subRows.forEach((row, i) => {
+    const k = easeBack(prog(t, ticks[i], ticks[i] + 0.3));
+    const cb = row.querySelector('.cb');
+    const done = t >= ticks[i];
+    cb.style.background = done ? '#22c55e' : 'transparent';
+    cb.style.borderColor = done ? '#22c55e' : '#4b5689';
+    cb.textContent = done ? '✓' : '';
+    cb.style.transform = `scale(${done ? lerp(0.6, 1, clamp(k, 0, 1.2)) : 1})`;
+    row.querySelector('.ttl').style.setProperty('--strike', easeOut(prog(t, ticks[i] + 0.05, ticks[i] + 0.4)) * 100 + '%');
+    row.querySelector('.ttl').style.color = done ? '#8b94b8' : '#e6e9f5';
+  });
+  const nDone = ticks.slice(1).filter((x) => t >= x).length;
+  $('pTxt').textContent = `${nDone}/3`;
+  $('pTxt').style.color = nDone === 3 ? '#22c55e' : '#8b94b8';
+  $('pBar').style.width = (nDone / 3) * 100 + '%';
+  $('pBar').style.background = nDone === 3 ? '#22c55e' : '#6366f1';
+  const nb = easeBack(prog(t, 26.6, 27.0));
+  $('noteBubble').style.transform = `translate(1500px, 780px) translate(-50%, -50%) scale(${Math.max(0, nb)}) rotate(${lerp(-6, 2, clamp(nb))}deg)`;
+  $('noteBubble').style.opacity = Math.min(clamp(nb * 1.5), s6);
+
+  // ----- Scene 7: CTA -----
+  const l7 = easeBack(prog(t, 27.6, 28.3));
+  place($('ctaLogo'), CX, 330, { s: Math.max(0, l7), o: clamp(l7 * 2) });
+  const focusRect = document.getElementById('ctaFocus');
+  if (focusRect) {
+    const sx = 1 + 0.12 * Math.max(0, Math.sin((t - 28.3) * 2.2));
+    focusRect.setAttribute('transform', `translate(32 32) scale(${t > 28.3 ? sx : 1} 1) translate(-32 -32)`);
+  }
+  place($('ctaWord'), CX, 540, { o: easeOut(prog(t, 28.0, 28.6)), s: lerp(0.95, 1, easeOut(prog(t, 28.0, 28.7))) });
+  place($('ctaUrl'), CX, 650, { o: easeOut(prog(t, 28.4, 28.9)) });
+  const b7 = easeBack(prog(t, 28.7, 29.2));
+  place($('ctaBtn'), CX, 790, { s: Math.max(0, b7) * (1 + 0.03 * Math.sin(t * 5) * prog(t, 29.2, 29.4)), o: clamp(b7 * 2) });
+}
+
+window.render = render;
+window.DURATION = DURATION;
+
+if (!new URLSearchParams(location.search).has('record')) {
+  const t0 = performance.now();
+  const loop = () => {
+    render(((performance.now() - t0) / 1000) % DURATION);
+    requestAnimationFrame(loop);
+  };
+  loop();
+} else {
+  render(0);
+}
+</script>
+</body>
+</html>

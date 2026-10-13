@@ -47,8 +47,16 @@ const pct = (v) => (v === null || v === undefined ? '—' : `${v}%`);
 const kpis = computed(() => {
   const o = ov.value;
   if (!o) return [];
+  const b = o.billing;
   return [
     { icon: '👥', label: t('admin.kpi.users'), value: o.users, sub: t('admin.kpi.newUsers', { n: o.new_users }) },
+    {
+      icon: '⭐',
+      label: t('billing.admin.subscribers'),
+      value: b.subscribers,
+      sub: t('billing.admin.subscribersSub', { t: b.trialing, p: b.promo, f: b.free }),
+    },
+    { icon: '💰', label: t('billing.admin.mrr'), value: `$${b.mrr_usd.toFixed(2)}`, sub: t('billing.admin.mrrSub') },
     {
       icon: '⚡',
       label: t('admin.kpi.active'),
@@ -102,8 +110,35 @@ const axisLabels = computed(() => {
 });
 
 // ---------- Users table ----------
+const PLAN_ORDER = ['free', 'trial', 'promo', 'subscription', 'admin'];
+
+async function grantPro(u, event) {
+  const value = event.target.value;
+  event.target.value = '';
+  if (!value) return;
+  try {
+    await api.post(`/admin/users/${u.id}/pro`, { days: value === 'forever' ? null : Number(value) });
+    toast.success(t('billing.admin.granted'), u.email);
+    await load();
+  } catch (e) {
+    toast.error(t('common.error'), errMsg(e));
+  }
+}
+
+async function revokePro(u) {
+  if (!confirm(`${t('billing.admin.revoke')}: ${u.email}?`)) return;
+  try {
+    await api.delete(`/admin/users/${u.id}/pro`);
+    toast.success(t('billing.admin.revoked'), u.email);
+    await load();
+  } catch (e) {
+    toast.error(t('common.error'), errMsg(e));
+  }
+}
+
 const COLUMNS = [
   { key: 'name', label: 'admin.col.user', sort: (u) => u.name.toLowerCase() },
+  { key: 'plan_source', label: 'billing.admin.colPlan', sort: (u) => PLAN_ORDER.indexOf(u.plan_source ?? 'free') },
   { key: 'created_at', label: 'admin.col.registered', sort: (u) => u.created_at },
   { key: 'last_activity', label: 'admin.col.lastActivity', sort: (u) => u.last_activity ?? '' },
   { key: 'projects', label: 'admin.col.projects', num: true },
@@ -264,6 +299,21 @@ const level = (v) => (v === null ? '' : v >= 70 ? 'good' : v >= 35 ? 'mid' : 'lo
                       <span class="muted small">{{ u.email }}</span>
                     </div>
                   </div>
+                </td>
+                <td class="nowrap">
+                  <span class="plan-badge sm" :class="u.plan_source ?? 'free'">
+                    {{ t(`billing.admin.plan.${u.plan_source ?? 'free'}`) }}
+                  </span>
+                  <div v-if="u.plan_source === 'trial'" class="muted small">→ {{ fmtDateShort(u.trial_ends_at) }}</div>
+                  <button v-if="u.plan_source === 'promo'" class="link-btn small" @click="revokePro(u)">
+                    ✕ {{ t('billing.admin.revoke') }}
+                  </button>
+                  <select v-else-if="['free', 'trial'].includes(u.plan_source ?? 'free')" class="grant-select" @change="grantPro(u, $event)">
+                    <option value="">{{ t('billing.admin.grant') }}</option>
+                    <option value="30">{{ t('billing.admin.grant30') }}</option>
+                    <option value="365">{{ t('billing.admin.grant365') }}</option>
+                    <option value="forever">{{ t('billing.admin.grantForever') }}</option>
+                  </select>
                 </td>
                 <td class="nowrap">{{ fmtDateShort(u.created_at, { year: true }) }}</td>
                 <td class="nowrap" :title="u.last_seen_at ? t('admin.lastSeen', { time: ago(u.last_seen_at) }) : ''">

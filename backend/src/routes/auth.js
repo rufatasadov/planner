@@ -3,15 +3,17 @@ import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import { isAdminEmail, signToken, requireAuth } from '../middleware/auth.js';
 import { badRequest, conflict, requireString, unauthorized } from '../utils/http.js';
+import { TRIAL_DAYS, getBilling } from '../services/billing.js';
 
 const router = Router();
 
-const publicUser = (u) => ({
+const publicUser = async (u) => ({
   id: u.id,
   email: u.email,
   name: u.name,
   created_at: u.created_at,
   is_admin: isAdminEmail(u.email),
+  billing: await getBilling(u.id, u.email),
 });
 
 router.post('/register', async (req, res) => {
@@ -28,12 +30,13 @@ router.post('/register', async (req, res) => {
 
   const hash = await bcrypt.hash(password, 10);
   const { rows } = await query(
-    'INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING *',
-    [email, name, hash],
+    `INSERT INTO users (email, name, password_hash, trial_ends_at)
+     VALUES ($1, $2, $3, now() + make_interval(days => $4)) RETURNING *`,
+    [email, name, hash, TRIAL_DAYS],
   );
   await query('INSERT INTO user_settings (user_id) VALUES ($1)', [rows[0].id]);
 
-  res.status(201).json({ token: signToken(rows[0]), user: publicUser(rows[0]) });
+  res.status(201).json({ token: signToken(rows[0]), user: await publicUser(rows[0]) });
 });
 
 router.post('/login', async (req, res) => {
@@ -45,13 +48,13 @@ router.post('/login', async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
     throw unauthorized('auth.wrongCredentials');
   }
-  res.json({ token: signToken(user), user: publicUser(user) });
+  res.json({ token: signToken(user), user: await publicUser(user) });
 });
 
 router.get('/me', requireAuth, async (req, res) => {
   const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.userId]);
   if (!rows[0]) throw unauthorized('auth.userNotFound');
-  res.json(publicUser(rows[0]));
+  res.json(await publicUser(rows[0]));
 });
 
 export default router;

@@ -40,6 +40,12 @@ const messages = {
     'common.notFound': 'Tapılmadı',
     'common.endpointNotFound': 'Endpoint tapılmadı',
     'common.serverError': 'Server xətası',
+    'common.tooManyRequests': 'Çox sayda sorğu göndərildi. Bir az sonra yenidən cəhd edin.',
+    'plan.projectLimit': 'Pulsuz planda ən çox {max} proyekt yaratmaq olar. Limitsiz proyektlər üçün Pro-ya keçin.',
+    'billing.unavailable': 'Ödəniş hazırda mümkün deyil. Bir az sonra yenidən cəhd edin.',
+    'billing.alreadySubscribed': 'Sizin artıq aktiv Pro abunəliyiniz var',
+    'billing.noSubscription': 'Ödənişli abunəlik tapılmadı',
+    'validation.tooLarge': 'Sorğu həddən artıq böyükdür',
   },
   en: {
     'validation.int': '{name} must be an integer',
@@ -82,6 +88,12 @@ const messages = {
     'common.notFound': 'Not found',
     'common.endpointNotFound': 'Endpoint not found',
     'common.serverError': 'Server error',
+    'common.tooManyRequests': 'Too many requests. Please try again a bit later.',
+    'plan.projectLimit': 'The Free plan allows up to {max} projects. Upgrade to Pro for unlimited projects.',
+    'billing.unavailable': 'Payments are unavailable right now. Please try again a bit later.',
+    'billing.alreadySubscribed': 'You already have an active Pro subscription',
+    'billing.noSubscription': 'No paid subscription found',
+    'validation.tooLarge': 'Request is too large',
   },
   ru: {
     'validation.int': '{name} должно быть целым числом',
@@ -124,6 +136,12 @@ const messages = {
     'common.notFound': 'Не найдено',
     'common.endpointNotFound': 'Эндпоинт не найден',
     'common.serverError': 'Ошибка сервера',
+    'common.tooManyRequests': 'Слишком много запросов. Попробуйте чуть позже.',
+    'plan.projectLimit': 'На бесплатном плане можно создать не больше {max} проектов. Перейдите на Pro для безлимитных проектов.',
+    'billing.unavailable': 'Оплата сейчас недоступна. Попробуйте чуть позже.',
+    'billing.alreadySubscribed': 'У вас уже есть активная подписка Pro',
+    'billing.noSubscription': 'Платная подписка не найдена',
+    'validation.tooLarge': 'Запрос слишком большой',
   },
 };
 

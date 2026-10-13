@@ -1,0 +1,15 @@
+{
+  "name": "onelineplanner-promo",
+  "private": true,
+  "type": "module",
+  "description": "30-second promo animation for OneLinePlanner, rendered to MP4",
+  "author": "Rufat Asadov <rufatasadov24@gmail.com>",
+  "scripts": {
+    "record": "node record.mjs",
+    "record:en": "node record.mjs --lang en",
+    "stills": "node record.mjs --stills"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { query } from '../db.js';
-import { requireOneOf } from '../utils/http.js';
+import { notFound, requireInt, requireOneOf } from '../utils/http.js';
+import { isAdminEmail } from '../middleware/auth.js';
+import { LIVE_SUBSCRIPTION_SQL, PRODUCTS } from '../services/billing.js';
 
 const router = Router();
 
@@ -83,8 +85,14 @@ router.get('/stats', async (req, res) => {
        SELECT user_id, count(*) AS total, count(*) FILTER (WHERE created_at >= p.since) AS created_period
        FROM task_notes CROSS JOIN p GROUP BY user_id
      ),
-     pr AS (SELECT user_id, count(*) AS total FROM projects GROUP BY user_id)
-     SELECT u.id, u.name, u.email, u.created_at, u.last_seen_at,
+     pr AS (SELECT user_id, count(*) AS total FROM projects GROUP BY user_id),
+     sub AS (
+       SELECT DISTINCT ON (s.user_id) s.user_id, s.product_id, s.provider
+       FROM subscriptions s WHERE ${LIVE_SUBSCRIPTION_SQL}
+       ORDER BY s.user_id, (s.provider = 'promo'), s.current_period_end DESC NULLS FIRST
+     )
+     SELECT u.id, u.name, u.email, u.created_at, u.last_seen_at, u.trial_ends_at,
+            sub.product_id AS subscription_product, sub.provider AS subscription_provider,
             COALESCE(pr.total, 0)::int AS projects,
             COALESCE(tk.total, 0)::int AS tasks,
             COALESCE(tk.subtasks, 0)::int AS subtasks,
@@ -115,6 +123,7 @@ router.get('/stats', async (req, res) => {
      LEFT JOIN ws ON ws.user_id = u.id
      LEFT JOIN nt ON nt.user_id = u.id
      LEFT JOIN act ON act.user_id = u.id
+     LEFT JOIN sub ON sub.user_id = u.id
      ORDER BY u.created_at`,
     [days],
   );
@@ -123,7 +132,19 @@ router.get('/stats', async (req, res) => {
     u.activity_pct = Math.min(100, Math.round((u.active_days / u.period_days) * 100));
     u.completion_pct = u.tasks - u.tasks_cancelled > 0 ? Math.round((u.tasks_done / (u.tasks - u.tasks_cancelled)) * 100) : null;
     u.execution_pct = u.planned_min_ended > 0 ? Math.round((u.tracked_sec_ended / (u.planned_min_ended * 60)) * 100) : null;
+    u.plan_source = isAdminEmail(u.email)
+      ? 'admin'
+      : u.subscription_provider
+        ? (u.subscription_provider === 'promo' ? 'promo' : 'subscription')
+        : u.trial_ends_at && new Date(u.trial_ends_at) > new Date()
+          ? 'trial'
+          : null;
   }
+  const subscribers = users.filter((u) => u.plan_source === 'subscription');
+  const mrr = subscribers.reduce((s, u) => {
+    const p = PRODUCTS[u.subscription_product];
+    return p ? s + p.usd / p.months : s;
+  }, 0);
 
   // Daily series in the admin's time zone.
   const { rows: daily } = await query(
@@ -181,10 +202,38 @@ router.get('/stats', async (req, res) => {
       notes: sum('notes'),
       notes_period: sum('notes_period'),
       avg_activity_pct: users.length ? Math.round(users.reduce((s, u) => s + u.activity_pct, 0) / users.length) : 0,
+      billing: {
+        subscribers: subscribers.length,
+        trialing: users.filter((u) => u.plan_source === 'trial').length,
+        promo: users.filter((u) => u.plan_source === 'promo').length,
+        free: users.filter((u) => !u.plan_source).length,
+        mrr_usd: Math.round(mrr * 100) / 100,
+      },
     },
     daily,
     users,
   });
+});
+
+// POST /admin/users/:id/pro { days: 30 | 365 | null }  — free Pro (provider 'promo'); days = null means no end.
+router.post('/users/:id/pro', async (req, res) => {
+  const userId = requireInt(req.params.id, 'id', { min: 1 });
+  const days = req.body.days == null ? null : requireInt(req.body.days, 'days', { min: 1, max: 3650 });
+  const { rowCount } = await query('SELECT 1 FROM users WHERE id = $1', [userId]);
+  if (!rowCount) throw notFound('auth.userNotFound');
+  await query(`UPDATE subscriptions SET status = 'canceled', updated_at = now() WHERE user_id = $1 AND provider = 'promo'`, [userId]);
+  await query(
+    `INSERT INTO subscriptions (user_id, provider, external_id, product_id, status, current_period_end, will_renew)
+     VALUES ($1, 'promo', $2, 'pro_promo', 'active', CASE WHEN $3::int IS NULL THEN NULL ELSE now() + make_interval(days => $3::int) END, false)`,
+    [userId, `promo-${userId}-${Date.now()}`, days],
+  );
+  res.status(201).json({ ok: true });
+});
+
+router.delete('/users/:id/pro', async (req, res) => {
+  const userId = requireInt(req.params.id, 'id', { min: 1 });
+  await query(`UPDATE subscriptions SET status = 'canceled', updated_at = now() WHERE user_id = $1 AND provider = 'promo'`, [userId]);
+  res.json({ ok: true });
 });
 
 export default router;

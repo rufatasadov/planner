@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { locale, t } from './i18n';
+import { usePaywall } from './stores/paywall';
 
 const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api/v1' });
 
@@ -17,6 +18,8 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
+    // Plan limit reached: show the upgrade dialog. Callers should skip their own error toast (isPaymentRequired).
+    if (err.response?.status === 402) usePaywall().show(err.response.data?.details?.limit ?? null);
     return Promise.reject(err);
   },
 );

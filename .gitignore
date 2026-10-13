@@ -3,4 +3,5 @@ dist/
 .env
 .DS_Store
 planner-data-*.sql
+backups/
 caddy-extra/*.caddy

@@ -807,3 +807,60 @@ a.note-chip:hover { color: var(--text); }
 .theme-tabs { margin: 0; }
 [data-theme='light'] .auth-glow { opacity: 0.25; }
 [data-theme='light'] .tl-hour { border-left-color: var(--surface-3); }
+
+/* ---------- Billing: plan chip, paywall, subscription ---------- */
+.plan-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; white-space: nowrap; cursor: pointer; text-decoration: none;
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--text);
+}
+.plan-chip:hover { background: color-mix(in srgb, var(--primary) 24%, transparent); }
+.plan-chip.trial.warning { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent); }
+.plan-chip.upgrade { border: none; color: #fff; background: linear-gradient(135deg, var(--primary), var(--primary-2)); box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35); }
+.plan-chip.pro { border: none; color: #fff; letter-spacing: 0.06em; background: linear-gradient(135deg, var(--primary), var(--primary-2)); }
+
+.paywall-lead { margin: 0 0 16px; line-height: 1.5; }
+.period-switch { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
+.period-switch button {
+  flex: 1; padding: 8px 10px; border: none; border-radius: 9px; background: transparent; color: var(--muted);
+  font: inherit; font-weight: 650; cursor: pointer;
+}
+.period-switch button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.save-badge { margin-left: 4px; padding: 1px 7px; border-radius: 999px; font-size: 11px; color: #fff; background: var(--success); }
+.price-box { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin: 18px 0 14px; }
+.price-box b { font-size: 38px; letter-spacing: -0.02em; }
+.price-box small { flex-basis: 100%; }
+.plan-compare { width: 100%; border-collapse: collapse; font-size: 14px; }
+.plan-compare th, .plan-compare td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: center; }
+.plan-compare th:first-child, .plan-compare td:first-child { text-align: left; }
+.plan-compare th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.plan-compare .pro-col { color: var(--primary); font-weight: 700; }
+.plan-compare th.pro-col { color: var(--primary); }
+.soon-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-3); color: var(--muted); }
+.paywall-note { margin-right: auto; max-width: 240px; line-height: 1.4; }
+
+.subscription-card .sub-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.sub-line { margin: 6px 0 0; }
+.plan-badge {
+  display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 13px; font-weight: 750;
+  background: var(--surface-3); color: var(--text);
+}
+.plan-badge.pro, .plan-badge.subscription, .plan-badge.admin { color: #fff; background: linear-gradient(135deg, var(--primary), var(--primary-2)); }
+.plan-badge.trial { background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary); }
+.plan-badge.promo { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
+.plan-badge.sm { padding: 2px 9px; font-size: 11.5px; }
+
+.history-locked { text-align: center; padding: 40px 24px; }
+.history-locked .lock-ico { font-size: 40px; }
+.history-locked h3 { margin: 10px 0 6px; }
+.history-locked p { max-width: 460px; margin: 0 auto 18px; line-height: 1.5; }
+.week-day.locked { opacity: 0.55; }
+.week-day.locked .wd-bar { filter: grayscale(1); }
+
+.grant-select {
+  display: block; margin-top: 4px; padding: 3px 6px; border-radius: 8px; font: inherit; font-size: 12px;
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border); cursor: pointer;
+}
+.link-btn { display: block; margin-top: 4px; padding: 0; border: none; background: none; color: var(--danger); font: inherit; cursor: pointer; }
+.link-btn.small { font-size: 12px; }

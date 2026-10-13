@@ -12,6 +12,7 @@ import { theme, setTheme } from '../theme';
 import TimeSelect from '../components/TimeSelect.vue';
 import { AUTHOR } from '../about';
 import AppLogo from '../components/AppLogo.vue';
+import SubscriptionCard from '../components/SubscriptionCard.vue';
 
 const settings = useSettingsStore();
 const toast = useToast();
@@ -54,6 +55,8 @@ async function requestPermission() {
 <template>
   <div class="settings-page">
     <section class="page-head"><h1>{{ t('settings.title') }}</h1></section>
+
+    <SubscriptionCard />
 
     <section class="card form">
       <h3>{{ t('settings.appearance') }}</h3>

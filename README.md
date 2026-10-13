@@ -50,6 +50,35 @@ scp dump.sql user@server:/tmp/                       # serverə köçür
 ./scripts/db-import.sh /tmp/dump.sql                 # serverdə, layihə qovluğunda
 ```
 
+### Backup
+
+`backup` servisi işə düşəndə və sonra hər `BACKUP_INTERVAL_HOURS` (default 24) saatdan bir bazanın tam dump-ını `./backups` qovluğuna yazır, `BACKUP_KEEP_DAYS` (default 14) gündən köhnələri silir.
+
+```bash
+docker compose logs backup                                   # son backup-lar
+./scripts/db-restore-test.sh                                 # ən son backup-ı müvəqqəti bazaya bərpa edib yoxlayır (canlı bazaya toxunmur)
+./scripts/db-backup-pull.sh user@server /path/to/planner     # serverdəki backup-ları öz kompüterinə köçür (off-site kopya)
+```
+
+Tam bərpa (canlı bazanı əvəz edir): `docker exec -i planner-db pg_restore -U planner -d planner --clean --if-exists --no-owner < backups/planner-....dump`
+
+### Miqrasiyalar
+
+Sxem dəyişiklikləri `backend/src/migrations/NNNN_ad.sql` fayllarındadır və backend açılanda ardıcıl tətbiq olunur (tətbiq olunanlar `schema_migrations` cədvəlində saxlanılır). Yeni dəyişiklik üçün **növbəti nömrə ilə yeni fayl** yaradın — tətbiq olunmuş faylı dəyişməyin.
+
+### Testlər
+
+```bash
+docker compose up -d db
+cd backend && npm test        # planner_test bazasını hər dəfə sıfırdan yaradır
+```
+
+GitHub-a hər push-da `.github/workflows/ci.yml` backend testlərini və frontend build-i işlədir.
+
+### Monitorinq
+
+`.env`-də `SENTRY_DSN` (backend) və `VITE_SENTRY_DSN` (frontend, build zamanı) verilsə, xətalar [Sentry](https://sentry.io)-yə göndərilir. Boşdursa söndürülüdür.
+
 ### Docker-siz development (hot reload)
 
 ```bash

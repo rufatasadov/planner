@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router';
 import api, { errMsg, notifyPlansChanged } from '../api';
 import { useSettingsStore } from '../stores/settings';
 import { useToast } from '../stores/toast';
+import { useAuthStore } from '../stores/auth';
+import { usePaywall } from '../stores/paywall';
 import { useNow } from '../composables/useNow';
 import { t } from '../i18n';
 import {
@@ -27,6 +29,8 @@ const route = useRoute();
 const router = useRouter();
 const settings = useSettingsStore();
 const toast = useToast();
+const auth = useAuthStore();
+const paywall = usePaywall();
 const now = useNow();
 
 const date = ref(typeof route.query.date === 'string' ? route.query.date : toDateStr(new Date()));
@@ -47,6 +51,11 @@ const generateOpen = ref(false);
 const notesTask = ref(null);
 const notesPlanId = ref(null);
 const pendingMove = ref(null); // { plan, start_min, end_min } from timeline drag, awaiting confirmation
+
+// Free plan: first visible day (server header); older days are hidden, not deleted.
+const historyStart = ref(null);
+const historyLocked = computed(() => !!historyStart.value && date.value < historyStart.value);
+const historyDays = computed(() => auth.user?.billing?.limits?.history_days ?? 14);
 
 const week = computed(() => weekDates(date.value));
 const plans = computed(() => weekPlans.value.filter((p) => p.plan_date === date.value));
@@ -175,6 +184,7 @@ async function load() {
       api.get('/projects'),
     ]);
     weekPlans.value = plansRes.data;
+    historyStart.value = plansRes.headers['x-history-start'] ?? null;
     projects.value = projectsRes.data;
     loadedAt.value = Date.now();
   } catch (e) {
@@ -436,7 +446,7 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
         v-for="d in weekSummary"
         :key="d.date"
         class="week-day"
-        :class="{ active: d.date === date, today: d.date === todayStr }"
+        :class="{ active: d.date === date, today: d.date === todayStr, locked: historyStart && d.date < historyStart }"
         @click="date = d.date"
       >
         <div class="wd-top">
@@ -451,10 +461,18 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
           ></span>
           <span class="wd-free" :style="{ flex: Math.max(0, workDay - d.minutes) }"></span>
         </div>
-        <small class="muted">{{ d.minutes ? fmtDuration(d.minutes) : t('plan.empty') }}</small>
+        <small v-if="historyStart && d.date < historyStart" class="muted">🔒 Pro</small>
+        <small v-else class="muted">{{ d.minutes ? fmtDuration(d.minutes) : t('plan.empty') }}</small>
       </button>
     </section>
 
+    <section v-if="historyLocked" class="card history-locked">
+      <div class="lock-ico">🔒</div>
+      <h3>{{ t('billing.historyLocked') }}</h3>
+      <p class="muted">{{ t('billing.historyLockedText', { n: historyDays }) }}</p>
+      <button class="btn primary" @click="paywall.show('history')">⭐ {{ t('billing.upgrade') }}</button>
+    </section>
+    <template v-else>
     <section class="card timeline-card">
       <div class="card-head">
         <h3>{{ t('plan.schedule') }}</h3>
@@ -658,6 +676,7 @@ const planDone = (p) => p.tasks.filter((task) => task.status === 'done').length;
 
       </aside>
     </div>
+    </template>
 
     <PlanFormModal
       :show="formOpen"
