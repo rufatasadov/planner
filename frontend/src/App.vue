@@ -1,5 +1,5 @@
 <script setup>
-import { watch, onUnmounted } from 'vue';
+import { computed, watch, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import { useSettingsStore } from './stores/settings';
@@ -18,6 +18,7 @@ watch(
   (token) => {
     if (token) {
       settings.load(true).catch(() => {});
+      auth.fetchMe().catch(() => {});
       notifier.start();
     } else {
       notifier.stop();
@@ -28,12 +29,13 @@ watch(
 
 onUnmounted(() => notifier.stop());
 
-const navItems = [
+const navItems = computed(() => [
   { to: '/', label: 'nav.plan', icon: '📅', activeAttr: { 'exact-active-class': 'active' } },
   { to: '/projects', label: 'nav.projects', icon: '🗂️', activeAttr: { 'active-class': 'active' } },
   { to: '/notes', label: 'nav.notes', icon: '📝', activeAttr: { 'active-class': 'active' } },
   { to: '/settings', label: 'nav.settings', icon: '⚙️', activeAttr: { 'active-class': 'active' } },
-];
+  ...(auth.user?.is_admin ? [{ to: '/admin', label: 'nav.admin', icon: '🛡️', activeAttr: { 'active-class': 'active' } }] : []),
+]);
 
 function logout() {
   auth.logout();

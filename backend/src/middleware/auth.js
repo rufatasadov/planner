@@ -1,6 +1,13 @@
 import jwt from 'jsonwebtoken';
 import { query } from '../db.js';
-import { unauthorized } from '../utils/http.js';
+import { forbidden, unauthorized } from '../utils/http.js';
+
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'allforaze@gmail.com')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+export const isAdminEmail = (email) => ADMIN_EMAILS.includes(String(email).toLowerCase());
 
 export function signToken(user) {
   return jwt.sign({ sub: user.id, email: user.email }, process.env.JWT_SECRET, {
@@ -18,8 +25,20 @@ export async function requireAuth(req, _res, next) {
   } catch {
     return next(unauthorized('auth.invalidToken'));
   }
-  const { rowCount } = await query('SELECT 1 FROM users WHERE id = $1', [payload.sub]);
-  if (!rowCount) return next(unauthorized('auth.userNotFound'));
+  const { rows } = await query(
+    `UPDATE users SET last_seen_at = CASE
+       WHEN last_seen_at IS NULL OR last_seen_at < now() - interval '5 minutes' THEN now() ELSE last_seen_at END
+     WHERE id = $1 RETURNING email`,
+    [payload.sub],
+  );
+  if (!rows[0]) return next(unauthorized('auth.userNotFound'));
   req.userId = payload.sub;
+  req.userEmail = rows[0].email;
+  next();
+}
+
+/** Must run after requireAuth. The email is read from the database, not from the token. */
+export function requireAdmin(req, _res, next) {
+  if (!isAdminEmail(req.userEmail)) return next(forbidden());
   next();
 }

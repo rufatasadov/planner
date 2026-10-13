@@ -97,6 +97,7 @@ cavablarında `parent: { id, title, status, changed }` qaytarılır.
 | POST | `/notes` | `{ task_id, body, plan_id? }` — `body` Markdown mətndir |
 | PUT | `/notes/:id` | `{ body?, plan_id? }` |
 | DELETE | `/notes/:id` | |
+| GET | `/admin/stats?days=7\|30\|90\|365` | Yalnız admin: ümumi göstəricilər, günlük dinamika və hər istifadəçi üzrə statistika. Admin emailləri `ADMIN_EMAILS` env dəyişənindədir (standart: `allforaze@gmail.com`) |
 
 Tasklarda (`/tasks`, `/plans` cavablarında) `note_count` sahəsi qeydlərin sayını göstərir.
 

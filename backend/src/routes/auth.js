@@ -1,12 +1,18 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
-import { signToken, requireAuth } from '../middleware/auth.js';
+import { isAdminEmail, signToken, requireAuth } from '../middleware/auth.js';
 import { badRequest, conflict, requireString, unauthorized } from '../utils/http.js';
 
 const router = Router();
 
-const publicUser = (u) => ({ id: u.id, email: u.email, name: u.name, created_at: u.created_at });
+const publicUser = (u) => ({
+  id: u.id,
+  email: u.email,
+  name: u.name,
+  created_at: u.created_at,
+  is_admin: isAdminEmail(u.email),
+});
 
 router.post('/register', async (req, res) => {
   const email = requireString(req.body.email, 'email', { max: 255 }).toLowerCase();

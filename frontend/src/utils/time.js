@@ -42,6 +42,28 @@ export function weekDates(s) {
 
 export const weekdayShort = (s) => tm('time.weekdaysShort')[weekdayIndex(s)];
 
+/** "13 okt 2026" (year omitted for the current year unless forced). */
+export function fmtDateShort(value, { year } = {}) {
+  const d = value instanceof Date ? value : new Date(value);
+  const showYear = year ?? d.getFullYear() !== new Date().getFullYear();
+  return `${d.getDate()} ${tm('time.monthsShort')[d.getMonth()]}${showYear ? ` ${d.getFullYear()}` : ''}`;
+}
+
+/** Relative past time: "5 dəq əvvəl", "3 gün əvvəl". */
+export function fmtAgo(value) {
+  const sec = Math.max(0, (Date.now() - new Date(value).getTime()) / 1000);
+  if (sec < 60) return t('time.justNow');
+  const steps = [
+    ['yearsAgo', 31536000],
+    ['monthsAgo', 2592000],
+    ['daysAgo', 86400],
+    ['hoursAgo', 3600],
+    ['minutesAgo', 60],
+  ];
+  const [key, size] = steps.find(([, s]) => sec >= s);
+  return t(`time.${key}`, { n: Math.floor(sec / size) });
+}
+
 export function fmtDateLong(s) {
   const d = parseDate(s);
   return t('time.dateLong', {

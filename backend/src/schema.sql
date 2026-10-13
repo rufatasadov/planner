@@ -99,3 +99,8 @@ CREATE TABLE IF NOT EXISTS task_notes (
 );
 CREATE INDEX IF NOT EXISTS idx_task_notes_task ON task_notes(task_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_task_notes_user ON task_notes(user_id, created_at);
+
+-- Updated by authenticated requests (throttled), shown in the admin panel.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_work_sessions_user ON work_sessions(user_id, started_at);
+CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id);

@@ -2,7 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { migrate } from './migrate.js';
-import { requireAuth } from './middleware/auth.js';
+import { requireAdmin, requireAuth } from './middleware/auth.js';
+import adminRoutes from './routes/admin.js';
 import authRoutes from './routes/auth.js';
 import settingsRoutes from './routes/settings.js';
 import projectRoutes from './routes/projects.js';
@@ -34,6 +35,7 @@ api.use('/projects', requireAuth, projectRoutes);
 api.use('/tasks', requireAuth, taskRoutes);
 api.use('/plans', requireAuth, planRoutes);
 api.use('/notes', requireAuth, noteRoutes);
+api.use('/admin', requireAuth, requireAdmin, adminRoutes);
 app.use('/api/v1', api);
 
 app.use((_req, _res, next) => next(new HttpError(404, 'common.endpointNotFound')));
