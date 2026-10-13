@@ -10,7 +10,7 @@ import projectRoutes from './routes/projects.js';
 import taskRoutes from './routes/tasks.js';
 import planRoutes from './routes/plans.js';
 import noteRoutes from './routes/notes.js';
-import billingRoutes, { webhookRouter } from './routes/billing.js';
+import billingRoutes, { billingConfig, webhookRouter } from './routes/billing.js';
 import { HttpError } from './utils/http.js';
 import { pickLanguage, translate } from './i18n.js';
 import { reportError } from './sentry.js';
@@ -50,7 +50,7 @@ export function createApp() {
     legacyHeaders: false,
     handler: tooManyRequests,
   });
-  // Login/register only: slows down password guessing and mass sign-ups.
+  // Login, sign-up and email-link endpoints: slows down password guessing, mass sign-ups and email spam.
   const authLimiter = rateLimit({
     windowMs: 15 * 60_000,
     limit: envInt('AUTH_RATE_LIMIT', 30),
@@ -62,13 +62,17 @@ export function createApp() {
   const api = express.Router();
   api.get('/health', (_req, res) => res.json({ ok: true }));
   api.use(apiLimiter);
-  api.use(['/auth/login', '/auth/register'], authLimiter);
+  api.use(
+    ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password', '/auth/verify-email', '/auth/resend-verification'],
+    authLimiter,
+  );
   api.use('/auth', authRoutes);
   api.use('/settings', requireAuth, settingsRoutes);
   api.use('/projects', requireAuth, projectRoutes);
   api.use('/tasks', requireAuth, taskRoutes);
   api.use('/plans', requireAuth, planRoutes);
   api.use('/notes', requireAuth, noteRoutes);
+  api.get('/billing/config', billingConfig);
   api.use('/billing', requireAuth, billingRoutes);
   api.use('/admin', requireAuth, requireAdmin, adminRoutes);
   app.use('/api/v1', api);

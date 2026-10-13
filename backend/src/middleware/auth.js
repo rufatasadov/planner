@@ -28,10 +28,15 @@ export async function requireAuth(req, _res, next) {
   const { rows } = await query(
     `UPDATE users SET last_seen_at = CASE
        WHEN last_seen_at IS NULL OR last_seen_at < now() - interval '5 minutes' THEN now() ELSE last_seen_at END
-     WHERE id = $1 RETURNING email`,
+     WHERE id = $1 RETURNING email, password_changed_at`,
     [payload.sub],
   );
   if (!rows[0]) return next(unauthorized('auth.userNotFound'));
+  // A password reset logs out sessions whose token was issued before it.
+  const changedAt = rows[0].password_changed_at;
+  if (changedAt && payload.iat < Math.floor(changedAt.getTime() / 1000)) {
+    return next(unauthorized('auth.sessionExpired'));
+  }
   req.userId = payload.sub;
   req.userEmail = rows[0].email;
   next();

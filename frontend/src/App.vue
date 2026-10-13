@@ -1,6 +1,6 @@
 <script setup>
 import { computed, watch, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import { useSettingsStore } from './stores/settings';
 import { useNotifier } from './composables/useNotifier';
@@ -10,10 +10,14 @@ import PrefsSwitch from './components/PrefsSwitch.vue';
 import AppLogo from './components/AppLogo.vue';
 import PlanChip from './components/PlanChip.vue';
 import PaywallModal from './components/PaywallModal.vue';
+import VerifyEmailBanner from './components/VerifyEmailBanner.vue';
 
 const auth = useAuthStore();
 const settings = useSettingsStore();
 const router = useRouter();
+const route = useRoute();
+// Public site pages (pricing, legal, email links) render without the app chrome.
+const chrome = computed(() => Boolean(auth.token) && !route.meta.site);
 const notifier = useNotifier();
 
 watch(
@@ -48,7 +52,7 @@ function logout() {
 
 <template>
   <div class="app">
-    <header v-if="auth.token" class="topbar">
+    <header v-if="chrome" class="topbar">
       <RouterLink to="/" class="brand"><AppLogo :size="30" /></RouterLink>
       <nav class="main-nav">
         <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" v-bind="item.activeAttr">
@@ -65,14 +69,15 @@ function logout() {
         </button>
       </div>
     </header>
-    <main :class="{ container: auth.token }">
+    <VerifyEmailBanner v-if="chrome" />
+    <main :class="{ container: chrome }">
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" />
         </Transition>
       </RouterView>
     </main>
-    <nav v-if="auth.token" class="tab-bar">
+    <nav v-if="chrome" class="tab-bar">
       <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" v-bind="item.activeAttr">
         <span class="tab-ico">{{ item.icon }}</span>
         <span class="tab-label">{{ t(item.label) }}</span>

@@ -1,16 +1,15 @@
 <script setup>
 import { ref, reactive } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { errMsg } from '../api';
 import { t } from '../i18n';
-import PrefsSwitch from '../components/PrefsSwitch.vue';
-import { AUTHOR } from '../about';
-import AppLogo from '../components/AppLogo.vue';
+import AuthShell from '../components/AuthShell.vue';
 
 const auth = useAuthStore();
+const route = useRoute();
 const router = useRouter();
-const mode = ref('login');
+const mode = ref(route.query.mode === 'register' ? 'register' : 'login');
 const form = reactive({ name: '', email: '', password: '' });
 const error = ref('');
 const busy = ref(false);
@@ -31,11 +30,8 @@ async function submit() {
 </script>
 
 <template>
-  <div class="auth-page">
-    <div class="auth-glow"></div>
-    <div class="auth-prefs"><PrefsSwitch /></div>
-    <form class="auth-card card" @submit.prevent="submit">
-      <div class="brand big"><AppLogo :size="44" /></div>
+  <AuthShell>
+    <form class="auth-form" @submit.prevent="submit">
       <p class="muted">{{ t('auth.tagline') }}</p>
       <div class="tabs">
         <button type="button" :class="{ active: mode === 'login' }" @click="mode = 'login'">{{ t('auth.login') }}</button>
@@ -53,14 +49,11 @@ async function submit() {
           :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
         />
       </label>
+      <RouterLink v-if="mode === 'login'" to="/forgot-password" class="auth-link forgot-link">{{ t('account.forgot') }}</RouterLink>
       <p v-if="error" class="error-text">{{ error }}</p>
       <button class="btn primary block" :disabled="busy">
         {{ mode === 'login' ? t('auth.login') : t('auth.createAccount') }}
       </button>
     </form>
-    <footer class="auth-footer">
-      {{ t('about.author') }}: {{ AUTHOR.name }} ·
-      <a :href="`mailto:${AUTHOR.email}`">{{ AUTHOR.email }}</a>
-    </footer>
-  </div>
+  </AuthShell>
 </template>

@@ -79,6 +79,20 @@ GitHub-a hər push-da `.github/workflows/ci.yml` backend testlərini və fronten
 
 `.env`-də `SENTRY_DSN` (backend) və `VITE_SENTRY_DSN` (frontend, build zamanı) verilsə, xətalar [Sentry](https://sentry.io)-yə göndərilir. Boşdursa söndürülüdür.
 
+### Email
+
+Email təsdiqi və şifrə bərpası məktubları [Resend](https://resend.com) ilə göndərilir (`RESEND_API_KEY`, `MAIL_FROM`, linklər üçün `APP_URL`). Açar verilməyibsə məktublar sadəcə backend loguna yazılır: `docker logs planner-backend`.
+
+### Ödənişlər (Paddle)
+
+Pro abunəliyi [Paddle](https://paddle.com) ilə satılır. `.env`-də `PADDLE_ENV`, `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN` yazın, sonra məhsul, qiymətlər və webhook-u yaradın — skript qalan dəyişənləri çap edir:
+
+```bash
+docker compose exec backend node src/paddle-setup.js --webhook-url https://DOMAIN/api/v1/billing/webhooks/paddle
+```
+
+Lokal test üçün webhook-a ictimai ünvan lazımdır: `cloudflared tunnel --url http://127.0.0.1:4000` (ünvan hər dəfə dəyişir, skripti yeni ünvanla yenidən işə salın). Sandbox test kartı: `4242 4242 4242 4242`, CVC `100`.
+
 ### Docker-siz development (hot reload)
 
 ```bash

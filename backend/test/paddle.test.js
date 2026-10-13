@@ -132,7 +132,7 @@ describe('subscription webhooks', () => {
 describe('checkout endpoints', () => {
   test('report Paddle as unavailable when it is not configured', async () => {
     const u = await registerUser();
-    expect((await api().get('/api/v1/billing/config').set(u.auth).expect(200)).body).toEqual({ provider: null });
+    expect((await api().get('/api/v1/billing/config').expect(200)).body).toEqual({ provider: null });
     const res = await api().post('/api/v1/billing/checkout').set(u.auth).send({ product: 'pro_yearly' }).expect(503);
     expect(res.body.code).toBe('billing.unavailable');
   });

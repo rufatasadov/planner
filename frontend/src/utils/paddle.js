@@ -42,6 +42,17 @@ function initPaddle({ environment, client_token }) {
   return ready;
 }
 
+/**
+ * For the /checkout page (Paddle's default payment link): initializing Paddle.js there
+ * opens the checkout for the ?_ptxn= transaction automatically. Resolves false when payments are off.
+ */
+export async function initPaddleFromConfig() {
+  const { data } = await api.get('/billing/config');
+  if (data.provider !== 'paddle') return false;
+  await initPaddle(data);
+  return true;
+}
+
 /** Creates a checkout for the plan on the server and opens Paddle's overlay. */
 export async function openCheckout(product) {
   const { data } = await api.post('/billing/checkout', { product });

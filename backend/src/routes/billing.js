@@ -9,10 +9,11 @@ const router = Router();
 
 const unavailable = () => new HttpError(503, 'billing.unavailable');
 
-router.get('/config', (_req, res) => {
+/** Public: the /checkout page opened from Paddle emails (_ptxn links) may not be logged in. */
+export function billingConfig(_req, res) {
   const c = paddleConfig();
   res.json(paddleEnabled() ? { provider: 'paddle', environment: c.env, client_token: c.clientToken } : { provider: null });
-});
+}
 
 /** Links the user to a Paddle customer: reuses the stored id, an existing customer with the same email, or creates one. */
 async function ensureCustomer(userId) {

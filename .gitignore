@@ -5,3 +5,4 @@ dist/
 planner-data-*.sql
 backups/
 caddy-extra/*.caddy
+*.mp4
