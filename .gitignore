@@ -6,3 +6,4 @@ planner-data-*.sql
 backups/
 caddy-extra/*.caddy
 *.mp4
+!frontend/public/media/*.mp4
