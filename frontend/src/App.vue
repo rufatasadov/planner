@@ -7,6 +7,7 @@ import { useNotifier } from './composables/useNotifier';
 import { t } from './i18n';
 import ToastHost from './components/ToastHost.vue';
 import PrefsSwitch from './components/PrefsSwitch.vue';
+import AppLogo from './components/AppLogo.vue';
 
 const auth = useAuthStore();
 const settings = useSettingsStore();
@@ -46,7 +47,7 @@ function logout() {
 <template>
   <div class="app">
     <header v-if="auth.token" class="topbar">
-      <RouterLink to="/" class="brand"><span class="brand-dot"></span>Planner</RouterLink>
+      <RouterLink to="/" class="brand"><AppLogo :size="30" /></RouterLink>
       <nav class="main-nav">
         <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" v-bind="item.activeAttr">
           {{ t(item.label) }}

@@ -1,6 +1,7 @@
 {
   "name": "planner-frontend",
   "version": "1.0.0",
+  "author": "Rufat Asadov <rufatasadov24@gmail.com>",
   "private": true,
   "type": "module",
   "scripts": {

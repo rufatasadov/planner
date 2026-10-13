@@ -1,0 +1,32 @@
+<script setup>
+// One line (the day) with a single highlighted block on it: one task at a time.
+defineProps({
+  size: { type: Number, default: 28 },
+  wordmark: { type: Boolean, default: true },
+});
+const uid = `olp-${Math.random().toString(36).slice(2, 8)}`;
+</script>
+
+<template>
+  <span class="app-logo">
+    <svg :width="size" :height="size" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient :id="`${uid}-bg`" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#6366f1" />
+          <stop offset="1" stop-color="#a855f7" />
+        </linearGradient>
+        <linearGradient :id="`${uid}-dot`" x1="26" y1="26" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#ec4899" />
+          <stop offset="1" stop-color="#8b5cf6" />
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="16" :fill="`url(#${uid}-bg)`" />
+      <path d="M10 32H54" stroke="#fff" stroke-opacity=".35" stroke-width="4" stroke-linecap="round" />
+      <circle cx="12" cy="32" r="3" fill="#fff" fill-opacity=".55" />
+      <circle cx="52" cy="32" r="3" fill="#fff" fill-opacity=".55" />
+      <rect class="logo-focus" x="20" y="24" width="24" height="16" rx="8" fill="#fff" />
+      <circle cx="32" cy="32" r="4" :fill="`url(#${uid}-dot)`" />
+    </svg>
+    <span v-if="wordmark" class="wordmark"><b>OneLine</b><span>Planner</span></span>
+  </span>
+</template>

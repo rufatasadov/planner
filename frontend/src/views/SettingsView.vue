@@ -10,6 +10,8 @@ import { fmtDuration } from '../utils/time';
 import { LOCALES, locale, setLocale, t } from '../i18n';
 import { theme, setTheme } from '../theme';
 import TimeSelect from '../components/TimeSelect.vue';
+import { AUTHOR } from '../about';
+import AppLogo from '../components/AppLogo.vue';
 
 const settings = useSettingsStore();
 const toast = useToast();
@@ -148,5 +150,17 @@ async function requestPermission() {
         <button class="btn primary" :disabled="form.work_end_min <= form.work_start_min">{{ t('common.save') }}</button>
       </div>
     </form>
+
+    <section class="card about-card">
+      <h3>{{ t('about.title') }}</h3>
+      <div class="about-brand"><AppLogo :size="36" /></div>
+      <p class="muted">{{ t('about.mission') }}</p>
+      <dl class="about-list">
+        <dt>{{ t('about.author') }}</dt>
+        <dd>{{ AUTHOR.name }}</dd>
+        <dt>{{ t('about.contact') }}</dt>
+        <dd><a :href="`mailto:${AUTHOR.email}`">{{ AUTHOR.email }}</a></dd>
+      </dl>
+    </section>
   </div>
 </template>

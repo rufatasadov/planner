@@ -73,6 +73,12 @@ export default {
     noUsers: 'No users found',
     you: 'you',
   },
+  about: {
+    title: 'About',
+    mission: 'OneLinePlanner helps you plan tasks while working on only one thing at a time: the day is a single line, and at any moment there is just one task on it.',
+    author: 'Author',
+    contact: 'Contact',
+  },
   nav: { plan: 'Daily plan', projects: 'Projects', notes: 'Notes', settings: 'Settings', admin: 'Admin', logout: 'Log out' },
   notes: {
     title: 'Work notes',
@@ -131,7 +137,7 @@ export default {
   },
   status: { todo: 'To do', in_progress: 'In progress', done: 'Done', cancelled: 'Cancelled' },
   auth: {
-    tagline: 'Plan every hour of your day and manage your projects.',
+    tagline: 'One thing at a time. Plan your day on a single line.',
     login: 'Log in',
     register: 'Sign up',
     createAccount: 'Create account',

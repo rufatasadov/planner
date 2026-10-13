@@ -5,6 +5,8 @@ import { useAuthStore } from '../stores/auth';
 import { errMsg } from '../api';
 import { t } from '../i18n';
 import PrefsSwitch from '../components/PrefsSwitch.vue';
+import { AUTHOR } from '../about';
+import AppLogo from '../components/AppLogo.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -33,7 +35,7 @@ async function submit() {
     <div class="auth-glow"></div>
     <div class="auth-prefs"><PrefsSwitch /></div>
     <form class="auth-card card" @submit.prevent="submit">
-      <div class="brand big"><span class="brand-dot"></span>Planner</div>
+      <div class="brand big"><AppLogo :size="44" /></div>
       <p class="muted">{{ t('auth.tagline') }}</p>
       <div class="tabs">
         <button type="button" :class="{ active: mode === 'login' }" @click="mode = 'login'">{{ t('auth.login') }}</button>
@@ -56,5 +58,9 @@ async function submit() {
         {{ mode === 'login' ? t('auth.login') : t('auth.createAccount') }}
       </button>
     </form>
+    <footer class="auth-footer">
+      {{ t('about.author') }}: {{ AUTHOR.name }} ·
+      <a :href="`mailto:${AUTHOR.email}`">{{ AUTHOR.email }}</a>
+    </footer>
   </div>
 </template>

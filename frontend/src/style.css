@@ -83,14 +83,21 @@ p { margin: 0 0 8px; }
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 18px; }
 .brand.big { font-size: 26px; margin-bottom: 4px; }
-.brand-dot {
-  width: 14px; height: 14px; border-radius: 50%;
-  background: conic-gradient(var(--primary), var(--primary-2), #ec4899, var(--primary));
-  box-shadow: 0 0 16px var(--primary);
-  animation: spin 6s linear infinite;
+.app-logo { display: inline-flex; align-items: center; gap: 10px; }
+.app-logo svg { flex-shrink: 0; display: block; filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.35)); }
+.app-logo .logo-focus { transform-box: fill-box; transform-origin: center; animation: logo-focus 3.2s ease-in-out infinite; }
+.wordmark { letter-spacing: -0.02em; white-space: nowrap; }
+.wordmark b { font-weight: 800; }
+.wordmark span {
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--primary), #a855f7 60%, #ec4899);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
 }
+@keyframes logo-focus { 50% { transform: scaleX(1.12); } }
+@media (max-width: 380px) { .topbar .wordmark { display: none; } }
+@media (prefers-reduced-motion: reduce) { .app-logo .logo-focus { animation: none; } }
 .topbar nav { display: flex; gap: 4px; flex: 1; }
 .topbar nav a { padding: 8px 14px; border-radius: 10px; color: var(--muted); transition: 0.2s; white-space: nowrap; }
 .topbar nav a:hover { color: var(--text); background: var(--surface-2); }
@@ -786,6 +793,17 @@ a.note-chip:hover { color: var(--text); }
 .lang-switch button.active { background: var(--primary); color: #fff; }
 .theme-btn { font-size: 16px; }
 .auth-prefs { position: absolute; top: 20px; right: 20px; z-index: 1; }
+.auth-footer {
+  position: absolute; left: 0; right: 0; bottom: 16px; z-index: 1; padding: 0 16px;
+  text-align: center; font-size: 12px; color: var(--muted);
+}
+.auth-footer a, .about-list a { color: var(--primary); }
+.auth-footer a:hover, .about-list a:hover { text-decoration: underline; }
+.about-card { margin-top: 18px; display: flex; flex-direction: column; gap: 12px; }
+.about-brand { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.about-list { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0; }
+.about-list dt { color: var(--muted); }
+.about-list dd { margin: 0; overflow-wrap: anywhere; }
 .theme-tabs { margin: 0; }
 [data-theme='light'] .auth-glow { opacity: 0.25; }
 [data-theme='light'] .tl-hour { border-left-color: var(--surface-3); }

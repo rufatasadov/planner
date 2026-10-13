@@ -1,6 +1,6 @@
-# Planner
+# <img src="frontend/public/logo.svg" width="36" align="top" alt="" /> OneLinePlanner
 
-Proyekt/task idarəetməsi və günlük saat-saat planlama tətbiqi.
+Eyni anda yalnız bir işlə məşğul olmaqla taskları planlamaq üçün tətbiq: gün bir xəttdir və hər an onun üzərində tək bir iş olur. Proyekt/task idarəetməsi və günlük saat-saat planlama.
 
 - **backend/** — Node.js (Express 5) + PostgreSQL, JWT ilə REST API (`/api/v1`). Web və gələcək mobil tətbiq eyni API-dən istifadə edir.
 - **frontend/** — Vue 3 + Vite + Pinia.
@@ -109,4 +109,7 @@ Effektivlik = `effective_sec` ÷ planın keçmiş vaxtı. `auto_stop` aktivdirs�
 - `none` — yalnız bu plan dəyişir (kəsişmə olarsa `409`);
 - `next` — növbəti planın başlanğıcı bu planın yeni bitmə vaxtına çəkilir;
 - `all` — bütün sonrakı planlar eyni dəqiqə qədər sürüşdürülür.
-# planner
+
+## Müəllif
+
+**Rufat Asadov** — [rufatasadov24@gmail.com](mailto:rufatasadov24@gmail.com)

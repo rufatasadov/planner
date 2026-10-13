@@ -9,6 +9,12 @@ export default {
     saveFailed: 'Yadda saxlanmadı',
     deleteFailed: 'Silinmədi',
   },
+  about: {
+    title: 'Haqqında',
+    mission: 'OneLinePlanner eyni anda yalnız bir işlə məşğul olaraq taskları planlamaq üçündür: gün bir xəttdir və hər an onun üzərində tək bir iş olur.',
+    author: 'Müəllif',
+    contact: 'Əlaqə',
+  },
   nav: { plan: 'Günlük plan', projects: 'Proyektlər', notes: 'Qeydlər', settings: 'Ayarlar', admin: 'Admin', logout: 'Çıxış' },
   admin: {
     title: 'Admin panel',
@@ -131,7 +137,7 @@ export default {
   },
   status: { todo: 'Gözləyir', in_progress: 'İcrada', done: 'Bitib', cancelled: 'Ləğv edilib' },
   auth: {
-    tagline: 'Günün hər saatını planla, proyektlərini idarə et.',
+    tagline: 'Eyni anda yalnız bir iş. Gününü bir xətt üzərində planla.',
     login: 'Daxil ol',
     register: 'Qeydiyyat',
     createAccount: 'Hesab yarat',
