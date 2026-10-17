@@ -144,6 +144,9 @@ export default {
     name: 'Ad',
     email: 'Email',
     password: 'Şifrə',
+    continueApple: 'Apple ilə daxil ol',
+    continueGoogle: 'Google ilə davam et',
+    or: 'və ya',
   },
   plan: {
     today: 'Bu gün',

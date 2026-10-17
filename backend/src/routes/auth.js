@@ -9,6 +9,7 @@ import { appUrl, sendMail } from '../services/mail.js';
 import { resetPasswordMail, verifyEmailMail } from '../services/emails.js';
 import { pickLanguage } from '../i18n.js';
 import { reportError } from '../sentry.js';
+import { signInWithOAuth, verifyGoogleAccessToken, verifyIdToken } from '../services/oauth.js';
 
 const router = Router();
 
@@ -23,6 +24,7 @@ const publicUser = async (u) => ({
   name: u.name,
   created_at: u.created_at,
   email_verified: Boolean(u.email_verified_at),
+  has_password: Boolean(u.password_hash),
   is_admin: isAdminEmail(u.email),
   billing: await getBilling(u.id, u.email),
 });
@@ -74,9 +76,29 @@ router.post('/login', async (req, res) => {
 
   const { rows } = await query('SELECT * FROM users WHERE email = $1', [email]);
   const user = rows[0];
-  if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+  if (!user?.password_hash || !(await bcrypt.compare(password, user.password_hash))) {
     throw unauthorized('auth.wrongCredentials');
   }
+  res.json(await session(user));
+});
+
+// Apple (web + iOS) and Google (web + Android). A verified email joins an existing account.
+router.post('/oauth', async (req, res) => {
+  const provider = requireString(req.body.provider, 'provider', { max: 20 });
+  if (provider !== 'apple' && provider !== 'google') throw badRequest('validation.required', { name: 'provider' });
+  const name = typeof req.body.name === 'string' ? req.body.name.trim().slice(0, 255) : '';
+
+  let claims;
+  if (provider === 'google' && typeof req.body.access_token === 'string' && req.body.access_token) {
+    if (req.body.access_token.length > 20000) throw badRequest('validation.tooLong', { name: 'access_token' });
+    claims = await verifyGoogleAccessToken(req.body.access_token);
+  } else {
+    const idToken = requireString(req.body.id_token, 'id_token', { max: 20000 });
+    claims = await verifyIdToken(provider, idToken);
+  }
+  claims.name = name;
+
+  const user = await signInWithOAuth(claims);
   res.json(await session(user));
 });
 
@@ -89,13 +111,18 @@ router.get('/me', requireAuth, async (req, res) => {
 // Apple requires account deletion from inside the app. Related rows cascade from users.
 router.delete('/me', requireAuth, async (req, res) => {
   const password = String(req.body?.password ?? '');
-  if (!password) throw badRequest('validation.required', { name: 'password' });
   if (password.length > 200) throw badRequest('validation.tooLong', { name: 'password' });
 
   const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.userId]);
   const user = rows[0];
   if (!user) throw unauthorized('auth.userNotFound');
-  if (!(await bcrypt.compare(password, user.password_hash))) throw unauthorized('auth.wrongCredentials');
+  if (user.password_hash) {
+    if (!password || !(await bcrypt.compare(password, user.password_hash))) {
+      throw unauthorized('auth.wrongCredentials');
+    }
+  } else if (req.body?.confirm !== true) {
+    throw badRequest('validation.required', { name: 'confirm' });
+  }
 
   await query('DELETE FROM users WHERE id = $1', [user.id]);
   res.json({ ok: true });

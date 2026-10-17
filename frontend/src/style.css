@@ -873,6 +873,17 @@ a.note-chip:hover { color: var(--text); }
 .checkout-card p { margin: 0 0 22px; line-height: 1.5; }
 
 /* ---------- Auth extras (forgot / reset / verify) ---------- */
+.auth-social { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.auth-provider {
+  height: 44px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); font: inherit; font-weight: 600; cursor: pointer;
+}
+.auth-provider.apple { background: #111; color: #fff; border-color: #111; }
+.auth-provider:disabled { opacity: 0.6; cursor: default; }
+.auth-or {
+  display: flex; align-items: center; gap: 10px; margin: 4px 0 0; color: var(--muted); font-size: 12px;
+}
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .auth-form { display: flex; flex-direction: column; gap: 12px; }
 .auth-form label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
 .auth-title { margin: 4px 0 0; font-size: 20px; }

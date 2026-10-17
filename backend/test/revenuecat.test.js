@@ -141,6 +141,17 @@ describe('revenuecat webhook', () => {
     expect((await me(to)).subscription.provider).toBe('app_store');
   });
 
+  test('a Test Store purchase is stored and makes the user Pro', async () => {
+    const u = await registerUser();
+    await endTrial(u);
+    await send(event(u, { store: 'TEST_STORE', product_id: 'pro_monthly' })).expect(200);
+    expect(await me(u)).toMatchObject({
+      plan: 'pro',
+      source: 'subscription',
+      subscription: { provider: 'test_store', product_id: 'pro_monthly', status: 'active' },
+    });
+  });
+
   test('a Paddle store value is logged and does not create a subscription', async () => {
     const u = await registerUser();
     await endTrial(u);

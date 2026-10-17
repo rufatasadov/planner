@@ -38,6 +38,8 @@ services:
       PADDLE_CLIENT_TOKEN: ${PADDLE_CLIENT_TOKEN:-}
       PADDLE_WEBHOOK_SECRET: ${PADDLE_WEBHOOK_SECRET:-}
       REVENUECAT_WEBHOOK_AUTH: ${REVENUECAT_WEBHOOK_AUTH:-}
+      APPLE_CLIENT_IDS: ${APPLE_CLIENT_IDS:-com.onelineplanner.app}
+      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
       PADDLE_PRICE_PRO_MONTHLY: ${PADDLE_PRICE_PRO_MONTHLY:-}
       PADDLE_PRICE_PRO_YEARLY: ${PADDLE_PRICE_PRO_YEARLY:-}
     ports:
@@ -70,6 +72,9 @@ services:
       context: ./frontend
       args:
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_APPLE_CLIENT_ID: ${VITE_APPLE_CLIENT_ID:-}
+        VITE_APPLE_REDIRECT_URI: ${VITE_APPLE_REDIRECT_URI:-}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     container_name: planner-frontend
     restart: unless-stopped
     ports:

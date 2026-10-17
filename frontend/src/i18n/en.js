@@ -144,6 +144,9 @@ export default {
     name: 'Name',
     email: 'Email',
     password: 'Password',
+    continueApple: 'Sign in with Apple',
+    continueGoogle: 'Continue with Google',
+    or: 'or',
   },
   plan: {
     today: 'Today',

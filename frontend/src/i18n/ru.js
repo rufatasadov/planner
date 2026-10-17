@@ -144,6 +144,9 @@ export default {
     name: 'Имя',
     email: 'Email',
     password: 'Пароль',
+    continueApple: 'Войти через Apple',
+    continueGoogle: 'Продолжить через Google',
+    or: 'или',
   },
   plan: {
     today: 'Сегодня',

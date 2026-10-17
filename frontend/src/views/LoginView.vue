@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth';
 import { errMsg } from '../api';
 import { t } from '../i18n';
 import AuthShell from '../components/AuthShell.vue';
+import SocialAuth from '../components/SocialAuth.vue';
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -31,6 +32,13 @@ async function submit() {
 
 <template>
   <AuthShell>
+    <SocialAuth
+      :disabled="busy"
+      @start="busy = true"
+      @finish="busy = false"
+      @done="router.push('/')"
+      @error="error = $event"
+    />
     <form class="auth-form" @submit.prevent="submit">
       <p class="muted">{{ t('auth.tagline') }}</p>
       <div class="tabs">

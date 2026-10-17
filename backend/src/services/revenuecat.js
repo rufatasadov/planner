@@ -13,6 +13,7 @@ const PROVIDER = {
   APP_STORE: 'app_store',
   MAC_APP_STORE: 'app_store',
   PLAY_STORE: 'play_store',
+  TEST_STORE: 'test_store',
   PROMOTIONAL: 'promo',
 };
 

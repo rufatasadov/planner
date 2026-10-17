@@ -29,6 +29,15 @@ export const useAuthStore = defineStore('auth', {
       const { data } = await api.post('/auth/register', { name, email, password });
       this.setSession(data);
     },
+    async oauth({ provider, idToken, accessToken, name }) {
+      const { data } = await api.post('/auth/oauth', {
+        provider,
+        id_token: idToken,
+        access_token: accessToken,
+        name,
+      });
+      this.setSession(data);
+    },
     async fetchMe() {
       const { data } = await api.get('/auth/me');
       this.user = data;
