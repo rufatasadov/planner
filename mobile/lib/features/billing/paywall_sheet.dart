@@ -104,15 +104,14 @@ class _PaywallState extends ConsumerState<_Paywall> {
     }
     await _waitForPro();
     if (!mounted) return;
-    final provider =
+    final subscription =
         ref
             .read(authControllerProvider)
             .valueOrNull
             ?.user
             .billing
-            .subscription
-            ?.provider;
-    if (provider == 'app_store' || provider == 'play_store') {
+            .subscription;
+    if (subscription?.fromStore == true) {
       Navigator.pop(context);
       return;
     }
@@ -151,8 +150,7 @@ class _PaywallState extends ConsumerState<_Paywall> {
       await auth.refresh();
       final billing =
           ref.read(authControllerProvider).valueOrNull?.user.billing;
-      final provider = billing?.subscription?.provider;
-      if (provider == 'app_store' || provider == 'play_store') return;
+      if (billing?.subscription?.fromStore == true) return;
       await Future<void>.delayed(const Duration(seconds: 2));
       if (!mounted) return;
     }

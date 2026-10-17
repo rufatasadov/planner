@@ -587,8 +587,7 @@ class _Subscription extends ConsumerWidget {
           billing.subscription?.willRenew == false
               ? l10n.settingsEndsOn(formatted)
               : l10n.settingsRenews(formatted),
-        billing.subscription?.provider == 'app_store' ||
-                billing.subscription?.provider == 'play_store'
+        billing.subscription?.fromStore == true
             ? l10n.settingsManageStore
             : l10n.settingsManageWeb,
       ],

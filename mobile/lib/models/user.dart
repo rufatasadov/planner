@@ -13,6 +13,11 @@ class BillingSubscription {
   final DateTime? periodEnd;
   final bool willRenew;
 
+  bool get fromStore =>
+      provider == 'app_store' ||
+      provider == 'play_store' ||
+      provider == 'test_store';
+
   factory BillingSubscription.fromJson(Map<String, dynamic> json) {
     return BillingSubscription(
       provider: json['provider'] as String?,
