@@ -35,8 +35,28 @@ class AuthRepository {
     return AppUser.fromJson(res.data!);
   }
 
-  Future<void> deleteAccount(String password) async {
-    await _dio.delete('/auth/me', data: {'password': password});
+  Future<({String token, AppUser user})> oauth({
+    required String provider,
+    String? idToken,
+    String? accessToken,
+    String? name,
+  }) {
+    return _session('/auth/oauth', {
+      'provider': provider,
+      if (idToken != null) 'id_token': idToken,
+      if (accessToken != null) 'access_token': accessToken,
+      if (name != null && name.isNotEmpty) 'name': name,
+    });
+  }
+
+  Future<void> deleteAccount({String? password, bool confirm = false}) async {
+    await _dio.delete(
+      '/auth/me',
+      data: {
+        if (password != null) 'password': password,
+        if (confirm) 'confirm': true,
+      },
+    );
   }
 
   Future<void> forgotPassword(String email) async {

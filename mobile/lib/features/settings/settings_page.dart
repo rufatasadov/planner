@@ -38,45 +38,63 @@ class SettingsPage extends ConsumerWidget {
           const SizedBox(height: 16),
           if (user != null) _Subscription(user: user),
           _section(context, l10n.settingsAppearance, [
-            Text(l10n.language, style: TextStyle(color: mutedColor(context))),
+            Text(
+              l10n.language,
+              style: TextStyle(color: mutedColor(context), fontSize: 13),
+            ),
             const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'az', label: Text('AZ')),
-                ButtonSegment(value: 'en', label: Text('EN')),
-                ButtonSegment(value: 'ru', label: Text('RU')),
+            Row(
+              children: [
+                for (final code in const ['az', 'en', 'ru']) ...[
+                  if (code != 'az') const SizedBox(width: 8),
+                  Expanded(
+                    child: _pick(
+                      context,
+                      label: code.toUpperCase(),
+                      selected: prefs.locale.languageCode == code,
+                      onTap:
+                          () => ref
+                              .read(prefsProvider.notifier)
+                              .setLocale(Locale(code)),
+                    ),
+                  ),
+                ],
               ],
-              selected: {prefs.locale.languageCode},
-              onSelectionChanged:
-                  (value) => ref
-                      .read(prefsProvider.notifier)
-                      .setLocale(Locale(value.first)),
             ),
             const SizedBox(height: 16),
-            Text(l10n.theme, style: TextStyle(color: mutedColor(context))),
+            Text(
+              l10n.theme,
+              style: TextStyle(color: mutedColor(context), fontSize: 13),
+            ),
             const SizedBox(height: 8),
-            SegmentedButton<ThemeMode>(
-              segments: [
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  icon: const Icon(Icons.light_mode_outlined, size: 18),
-                  label: Text(l10n.themeLight),
+            Row(
+              children: [
+                Expanded(
+                  child: _pick(
+                    context,
+                    label: l10n.themeLight,
+                    icon: Icons.light_mode_outlined,
+                    selected: Theme.of(context).brightness == Brightness.light,
+                    onTap:
+                        () => ref
+                            .read(prefsProvider.notifier)
+                            .setThemeMode(ThemeMode.light),
+                  ),
                 ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  icon: const Icon(Icons.dark_mode_outlined, size: 18),
-                  label: Text(l10n.themeDark),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _pick(
+                    context,
+                    label: l10n.themeDark,
+                    icon: Icons.dark_mode_outlined,
+                    selected: Theme.of(context).brightness == Brightness.dark,
+                    onTap:
+                        () => ref
+                            .read(prefsProvider.notifier)
+                            .setThemeMode(ThemeMode.dark),
+                  ),
                 ),
               ],
-              selected: {
-                Theme.of(context).brightness == Brightness.light
-                    ? ThemeMode.light
-                    : ThemeMode.dark,
-              },
-              onSelectionChanged:
-                  (value) => ref
-                      .read(prefsProvider.notifier)
-                      .setThemeMode(value.first),
             ),
           ]),
           const _ScheduleView(),
@@ -120,6 +138,60 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+Widget _pick(
+  BuildContext context, {
+  required String label,
+  required bool selected,
+  required VoidCallback onTap,
+  IconData? icon,
+}) {
+  final scheme = Theme.of(context).colorScheme;
+  return Material(
+    color: selected ? scheme.primary.withValues(alpha: 0.14) : scheme.surface,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+      side: BorderSide(
+        color:
+            selected
+                ? scheme.primary
+                : scheme.outlineVariant.withValues(alpha: 0.6),
+      ),
+    ),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? scheme.primary : mutedColor(context),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? scheme.primary : null,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 Widget _section(BuildContext context, String title, List<Widget> children) {
@@ -523,43 +595,130 @@ class _Subscription extends ConsumerWidget {
     final locale = Localizations.localeOf(context).toString();
     final lines = _lines(l10n, billing, locale);
     final color = billing.isPro ? const Color(0xFF8B5CF6) : mutedColor(context);
+    final initial = _initial(user);
+    final store = billing.subscription?.provider;
+    final buttonStyle = TextButton.styleFrom(
+      minimumSize: const Size(0, 36),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      visualDensity: VisualDensity.compact,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
     return _section(context, l10n.settingsSubscription, [
-      Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-      Text(user.email, style: TextStyle(color: mutedColor(context))),
-      const SizedBox(height: 10),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(99),
-        ),
-        child: Text(
-          billing.badge(l10n),
-          style: TextStyle(color: color, fontWeight: FontWeight.w700),
-        ),
+      Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: color.withValues(alpha: 0.16),
+            child: Text(
+              initial,
+              style: TextStyle(color: color, fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  user.email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: mutedColor(context), fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(
+              billing.isPro ? l10n.planPro : l10n.planFree,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
       ),
-      for (final line in lines) ...[
-        const SizedBox(height: 6),
-        Text(line, style: TextStyle(color: mutedColor(context))),
+      if (lines.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < lines.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 4),
+                  Text(
+                    lines[i],
+                    style: TextStyle(
+                      color: mutedColor(context),
+                      fontSize: 13,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ],
-      const SizedBox(height: 8),
-      if (!billing.isPro || billing.source == 'trial')
-        OutlinedButton(
-          style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
-          onPressed: () => showPaywall(context, reason: 'default'),
-          child: Text(l10n.settingsUpgrade),
+      if (!billing.isPro || billing.source == 'trial') ...[
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
+            onPressed: () => showPaywall(context, reason: 'default'),
+            child: Text(l10n.settingsUpgrade),
+          ),
         ),
-      if (billing.subscription?.provider == 'app_store' ||
-          billing.subscription?.provider == 'play_store')
-        TextButton(
-          onPressed: () => _openStore(context, billing.subscription!.provider!),
-          child: Text(l10n.settingsOpenStore),
-        ),
-      TextButton(
-        onPressed: () => _restore(context, ref),
-        child: Text(l10n.settingsRestore),
+      ],
+      const SizedBox(height: 4),
+      Wrap(
+        spacing: 4,
+        runSpacing: 0,
+        children: [
+          TextButton(
+            style: buttonStyle,
+            onPressed: () => _restore(context, ref),
+            child: Text(l10n.settingsRestore),
+          ),
+          if (store == 'app_store' || store == 'play_store')
+            TextButton(
+              style: buttonStyle,
+              onPressed: () => _openStore(context, store!),
+              child: Text(l10n.settingsOpenStore),
+            ),
+        ],
       ),
     ]);
+  }
+
+  String _initial(AppUser user) {
+    final name = user.name.trim();
+    final source = name.isEmpty ? user.email : name;
+    if (source.isEmpty) return '?';
+    return String.fromCharCode(source.runes.first).toUpperCase();
   }
 
   List<String> _lines(AppLocalizations l10n, Billing billing, String locale) {
@@ -645,13 +804,18 @@ Future<void> _openStore(BuildContext context, String provider) async {
 }
 
 Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+  final hasPassword =
+      ref.read(authControllerProvider).valueOrNull?.user.hasPassword ?? true;
   final password = await showDialog<String>(
     context: context,
-    builder: (context) => const _DeleteAccountDialog(),
+    builder: (context) => _DeleteAccountDialog(requirePassword: hasPassword),
   );
   if (password == null || !context.mounted) return;
+  if (hasPassword && password.isEmpty) return;
   try {
-    await ref.read(authControllerProvider.notifier).deleteAccount(password);
+    await ref
+        .read(authControllerProvider.notifier)
+        .deleteAccount(password: password, confirm: !hasPassword);
   } catch (error) {
     if (!context.mounted) return;
     final l10n = AppLocalizations.of(context);
@@ -667,7 +831,9 @@ void _snack(BuildContext context, String text) {
 }
 
 class _DeleteAccountDialog extends StatefulWidget {
-  const _DeleteAccountDialog();
+  const _DeleteAccountDialog({required this.requirePassword});
+
+  final bool requirePassword;
 
   @override
   State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
@@ -694,17 +860,19 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(l10n.settingsDeleteAccountText),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _password,
-              obscureText: true,
-              autofocus: true,
-              scrollPadding: fieldScrollPadding,
-              decoration: InputDecoration(
-                labelText: l10n.settingsDeletePassword,
+            if (widget.requirePassword) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _password,
+                obscureText: true,
+                autofocus: true,
+                scrollPadding: fieldScrollPadding,
+                decoration: InputDecoration(
+                  labelText: l10n.settingsDeletePassword,
+                ),
+                onSubmitted: (value) => Navigator.pop(context, value),
               ),
-              onSubmitted: (value) => Navigator.pop(context, value),
-            ),
+            ],
           ],
         ),
         actions: [
@@ -713,7 +881,11 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             child: Text(l10n.cancel),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, _password.text),
+            onPressed:
+                () => Navigator.pop(
+                  context,
+                  widget.requirePassword ? _password.text : '',
+                ),
             child: Text(l10n.settingsDeleteConfirm),
           ),
         ],

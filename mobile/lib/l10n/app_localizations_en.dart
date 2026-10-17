@@ -18,6 +18,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get login => 'Log in';
 
   @override
+  String get authApple => 'Sign in with Apple';
+
+  @override
+  String get authGoogle => 'Continue with Google';
+
+  @override
+  String get authOr => 'or';
+
+  @override
+  String get authSignInFailed => 'The sign-in did not go through. Try again.';
+
+  @override
   String get register => 'Sign up';
 
   @override

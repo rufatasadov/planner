@@ -9,3 +9,7 @@ const apiBaseUrl = String.fromEnvironment(
 /// `--dart-define=REVENUECAT_APPLE_KEY=appl_... --dart-define=REVENUECAT_GOOGLE_KEY=goog_...`
 const revenueCatAppleKey = String.fromEnvironment('REVENUECAT_APPLE_KEY');
 const revenueCatGoogleKey = String.fromEnvironment('REVENUECAT_GOOGLE_KEY');
+
+/// Web OAuth client id. Android uses it as serverClientId so Google returns an ID token.
+/// `--dart-define=GOOGLE_WEB_CLIENT_ID=....apps.googleusercontent.com`
+const googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');

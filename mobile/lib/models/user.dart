@@ -109,12 +109,14 @@ class AppUser {
     required this.name,
     required this.emailVerified,
     required this.billing,
+    this.hasPassword = true,
   });
 
   final int id;
   final String email;
   final String name;
   final bool emailVerified;
+  final bool hasPassword;
   final Billing billing;
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
@@ -123,6 +125,7 @@ class AppUser {
       email: json['email'] as String,
       name: json['name'] as String? ?? '',
       emailVerified: json['email_verified'] as bool? ?? false,
+      hasPassword: json['has_password'] as bool? ?? true,
       billing: Billing.fromJson(json['billing'] as Map<String, dynamic>?),
     );
   }
@@ -132,6 +135,7 @@ class AppUser {
     'email': email,
     'name': name,
     'email_verified': emailVerified,
+    'has_password': hasPassword,
     'billing': billing.toJson(),
   };
 }

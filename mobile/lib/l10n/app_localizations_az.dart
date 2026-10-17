@@ -18,6 +18,18 @@ class AppLocalizationsAz extends AppLocalizations {
   String get login => 'Daxil ol';
 
   @override
+  String get authApple => 'Apple ilə daxil ol';
+
+  @override
+  String get authGoogle => 'Google ilə davam et';
+
+  @override
+  String get authOr => 'və ya';
+
+  @override
+  String get authSignInFailed => 'Giriş alınmadı. Yenidən cəhd edin.';
+
+  @override
   String get register => 'Qeydiyyat';
 
   @override

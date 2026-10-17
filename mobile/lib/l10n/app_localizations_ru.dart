@@ -18,6 +18,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get login => 'Войти';
 
   @override
+  String get authApple => 'Войти через Apple';
+
+  @override
+  String get authGoogle => 'Продолжить через Google';
+
+  @override
+  String get authOr => 'или';
+
+  @override
+  String get authSignInFailed => 'Вход не выполнен. Попробуйте снова.';
+
+  @override
   String get register => 'Регистрация';
 
   @override

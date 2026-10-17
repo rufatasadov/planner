@@ -51,6 +51,22 @@ class AuthController extends AsyncNotifier<Session?> {
         .register(name.trim(), email.trim(), password),
   );
 
+  Future<void> signInWithOAuth({
+    required String provider,
+    String? idToken,
+    String? accessToken,
+    String? name,
+  }) => _open(
+    () => ref
+        .read(authRepositoryProvider)
+        .oauth(
+          provider: provider,
+          idToken: idToken,
+          accessToken: accessToken,
+          name: name,
+        ),
+  );
+
   Future<void> logout() async {
     _epoch++;
     await ref.read(storeBillingProvider).logOut();
@@ -59,8 +75,10 @@ class AuthController extends AsyncNotifier<Session?> {
     state = const AsyncData(null);
   }
 
-  Future<void> deleteAccount(String password) async {
-    await ref.read(authRepositoryProvider).deleteAccount(password);
+  Future<void> deleteAccount({String? password, bool confirm = false}) async {
+    await ref
+        .read(authRepositoryProvider)
+        .deleteAccount(password: password, confirm: confirm);
     await logout();
   }
 

@@ -115,6 +115,30 @@ abstract class AppLocalizations {
   /// **'Log in'**
   String get login;
 
+  /// No description provided for @authApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Apple'**
+  String get authApple;
+
+  /// No description provided for @authGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get authGoogle;
+
+  /// No description provided for @authOr.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get authOr;
+
+  /// No description provided for @authSignInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in did not go through. Try again.'**
+  String get authSignInFailed;
+
   /// No description provided for @register.
   ///
   /// In en, this message translates to:
