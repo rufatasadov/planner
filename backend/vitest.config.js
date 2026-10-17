@@ -19,6 +19,7 @@ export default defineConfig({
       PADDLE_PRICE_PRO_MONTHLY: 'pri_test_monthly',
       PADDLE_PRICE_PRO_YEARLY: 'pri_test_yearly',
       PADDLE_WEBHOOK_SECRET: 'pdl_ntfset_test_secret',
+      REVENUECAT_WEBHOOK_AUTH: 'Bearer rc_test_secret',
       // Emails go to the in-memory outbox (services/mail.js).
       RESEND_API_KEY: '',
       APP_URL: 'https://app.test',

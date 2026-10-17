@@ -17,13 +17,9 @@ Müsbət tərəflər: `VITE_API_URL` artıq dəstəklənir (mobil tətbiq ayrıc
 
 ## 2. Arxitektura qərarları
 
-### 2.1 Mobil: **Capacitor** (tövsiyə)
+### 2.1 Mobil: **Flutter** (qərar dəyişdi)
 
-| Variant | Üstünlük | Çatışmazlıq | Qərar |
-|---|---|---|---|
-| **Capacitor** (mövcud Vue kodunu native qabığa salmaq) | Bir kod bazası, 4–6 həftə, bütün funksiyalar dərhal | Native hiss bir az zəif; Apple 4.2 riskinə görə native funksiyalar əlavə edilməlidir | ✅ **Seçilir** |
-| React Native / Flutter (yenidən yazmaq) | Ən yaxşı native təcrübə | 3–4 ay, iki kod bazası | ✗ indi yox |
-| Yalnız PWA | Ən ucuz | iOS-da mağaza yoxdur, bildirişlər məhduddur, IAP yoxdur | Web üçün əlavə olaraq ✅ |
+Əvvəl Capacitor təklif olunurdu. Seçim Flutter-dir: gün xətti və taymer native yazılır, iOS və Android bir kod bazasıdır. Plan, mərhələlər və mağaza qaydaları: [mobil-plan.md](./mobil-plan.md).
 
 Apple-ın rədd etməməsi üçün (Guideline 4.2 "minimum functionality") tətbiqə **native dəyər** qatılır: lokal bildirişlər (plan başlayır/bitir), haptics, widget (2-ci mərhələ), offline oxuma, Sign in with Apple.
 
@@ -150,7 +146,9 @@ Webhook qaydaları: imzanı yoxla → `billing_events`-ə `INSERT ... ON CONFLIC
 7. Analitika: **PostHog** (funnel: qeydiyyat → aktivasiya → trial → ödəniş), cookie razılığı.
 8. `api.js`: 401-də birbaşa `/login`-ə atmaq əvəzinə əvvəl `/auth/refresh` cəhdi.
 
-## 5. Mobil tətbiq (Capacitor)
+## 5. Mobil tətbiq
+
+Flutter planı [mobil-plan.md](./mobil-plan.md)-dədir. Aşağıdakı Capacitor cədvəli köhnədir və işlənmir.
 
 ```
 frontend/

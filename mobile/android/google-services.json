@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "256186170684",
+    "project_id": "onelineplanner-8c155",
+    "storage_bucket": "onelineplanner-8c155.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:256186170684:android:5e162b3fa78710f60f7239",
+        "android_client_info": {
+          "package_name": "com.onelineplanner.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEjeOiQglVb_GOADs64401HE38I3yd2G0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

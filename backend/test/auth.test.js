@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, test } from 'vitest';
-import { pool } from '../src/db.js';
+import { pool, query } from '../src/db.js';
 import { adminUser, api, registerUser } from './helpers.js';
 
 afterAll(() => pool.end());
@@ -69,5 +69,25 @@ describe('data isolation', () => {
 
     const mine = await api().get(`/api/v1/projects/${id}`).set(alice.auth).expect(200);
     expect(mine.body.name).toBe('Alice project');
+  });
+});
+
+describe('delete account', () => {
+  test('the wrong password does not delete the account', async () => {
+    const u = await registerUser();
+    const res = await api().delete('/api/v1/auth/me').set(u.auth).send({ password: 'nope-nope' }).expect(401);
+    expect(res.body.code).toBe('auth.wrongCredentials');
+    await api().get('/api/v1/auth/me').set(u.auth).expect(200);
+  });
+
+  test('the right password deletes the user and their data', async () => {
+    const u = await registerUser();
+    await api().post('/api/v1/projects').set(u.auth).send({ name: 'gone' }).expect(201);
+    await api().delete('/api/v1/auth/me').set(u.auth).send({ password: u.password }).expect(200);
+    await api().get('/api/v1/auth/me').set(u.auth).expect(401);
+    const { rows } = await query('SELECT count(*)::int AS n FROM users WHERE id = $1', [u.user.id]);
+    expect(rows[0].n).toBe(0);
+    const projects = await query('SELECT count(*)::int AS n FROM projects WHERE user_id = $1', [u.user.id]);
+    expect(projects.rows[0].n).toBe(0);
   });
 });

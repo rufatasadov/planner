@@ -3,6 +3,7 @@ import { query, withTransaction } from '../db.js';
 import { HttpError, conflict, notFound, requireOneOf } from '../utils/http.js';
 import { LIVE_SUBSCRIPTION_SQL } from '../services/billing.js';
 import { paddleApi, paddleConfig, paddleEnabled, verifyWebhookSignature } from '../services/paddle.js';
+import { applyRevenueCatEvent, webhookAuthorized } from '../services/revenuecat.js';
 import { reportError } from '../sentry.js';
 
 const router = Router();
@@ -153,6 +154,42 @@ webhookRouter.post('/paddle', async (req, res) => {
       );
       if (!ins.rowCount) return true;
       if (event.event_type.startsWith('subscription.')) await applyPaddleSubscription(client, event.data);
+      return false;
+    });
+    res.json({ ok: true, duplicate });
+  } catch (err) {
+    console.error(err);
+    reportError(err, req);
+    res.status(500).end();
+  }
+});
+
+// RevenueCat dashboard → Integrations → Webhooks.
+// Authorization header must equal REVENUECAT_WEBHOOK_AUTH (for example "Bearer <random>").
+webhookRouter.post('/revenuecat', async (req, res) => {
+  const secret = process.env.REVENUECAT_WEBHOOK_AUTH || '';
+  if (!secret) return res.status(503).end();
+  if (!webhookAuthorized(req.headers.authorization, secret)) return res.status(401).end();
+
+  const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return res.status(400).end();
+  }
+  const event = body?.event;
+  if (!event?.id || !event.type) return res.status(400).end();
+
+  try {
+    const duplicate = await withTransaction(async (client) => {
+      const ins = await client.query(
+        `INSERT INTO billing_events (id, provider, type, payload) VALUES ($1, 'revenuecat', $2, $3)
+         ON CONFLICT (id) DO NOTHING RETURNING id`,
+        [event.id, event.type, body],
+      );
+      if (!ins.rowCount) return true;
+      await applyRevenueCatEvent(client, event);
       return false;
     });
     res.json({ ok: true, duplicate });

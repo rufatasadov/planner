@@ -86,6 +86,21 @@ router.get('/me', requireAuth, async (req, res) => {
   res.json(await publicUser(rows[0]));
 });
 
+// Apple requires account deletion from inside the app. Related rows cascade from users.
+router.delete('/me', requireAuth, async (req, res) => {
+  const password = String(req.body?.password ?? '');
+  if (!password) throw badRequest('validation.required', { name: 'password' });
+  if (password.length > 200) throw badRequest('validation.tooLong', { name: 'password' });
+
+  const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.userId]);
+  const user = rows[0];
+  if (!user) throw unauthorized('auth.userNotFound');
+  if (!(await bcrypt.compare(password, user.password_hash))) throw unauthorized('auth.wrongCredentials');
+
+  await query('DELETE FROM users WHERE id = $1', [user.id]);
+  res.json({ ok: true });
+});
+
 router.post('/verify-email', async (req, res) => {
   const userId = await consumeToken(req.body.token, 'verify_email');
   if (!userId) throw badRequest('auth.invalidLink');

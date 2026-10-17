@@ -24,7 +24,7 @@ async function loadPlans(db, userId, whereSql, params) {
   );
   if (!plans.length) return [];
   const { rows: tasks } = await db.query(
-    `SELECT pt.plan_id, t.id, t.title, t.status, t.description, t.parent_id, t.position,
+    `SELECT pt.plan_id, t.id, t.title, t.status, t.description, t.parent_id, t.position, t.created_at,
             parent.title AS parent_title,
             (SELECT count(*)::int FROM task_notes n WHERE n.task_id = t.id) AS note_count,
             ${SUBTASK_COUNTS_SQL}
